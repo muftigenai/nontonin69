@@ -19,7 +19,7 @@ const AdminManagement = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const { data: usersData, isLoading: isLoadingUsers } = useQuery({
-    queryKey: ["users"],
+    queryKey: ["profiles_for_admin"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -42,7 +42,7 @@ const AdminManagement = () => {
     },
     onSuccess: () => {
       showSuccess("Peran pengguna berhasil diperbarui.");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles_for_admin"] });
       setAddAdminDialogOpen(false);
       setSelectedUserId(null);
     },

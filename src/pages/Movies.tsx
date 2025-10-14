@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,6 +34,7 @@ const movieSchema = z.object({
   access_type: z.enum(["free", "premium"], {
     required_error: "Anda perlu memilih tipe akses.",
   }),
+  status: z.enum(["active", "inactive"]),
 });
 
 type MovieFormValues = z.infer<typeof movieSchema>;
@@ -57,6 +59,7 @@ const Movies = () => {
       price: 0,
       subtitle_url: "",
       access_type: "free",
+      status: "active",
     },
   });
 
@@ -114,7 +117,7 @@ const Movies = () => {
     setEditingMovie(null);
     form.reset({
       title: "", description: "", poster_url: "", trailer_url: "", video_url: "",
-      release_date: "", genre: "", duration: 0, price: 0, subtitle_url: "", access_type: "free"
+      release_date: "", genre: "", duration: 0, price: 0, subtitle_url: "", access_type: "free", status: "active"
     });
     setIsDialogOpen(true);
   };
@@ -122,12 +125,18 @@ const Movies = () => {
   const handleEdit = (movie: Movie) => {
     setEditingMovie(movie);
     form.reset({
-      ...movie,
+      title: movie.title,
+      description: movie.description || "",
+      poster_url: movie.poster_url || "",
+      trailer_url: movie.trailer_url || "",
+      video_url: movie.video_url || "",
+      release_date: movie.release_date || "",
+      genre: movie.genre || "",
       duration: movie.duration || 0,
       price: movie.price || 0,
       subtitle_url: movie.subtitle_url || "",
-      video_url: movie.video_url || "",
       access_type: movie.access_type || "free",
+      status: movie.status || "active",
     });
     setIsDialogOpen(true);
   };
@@ -241,7 +250,7 @@ const Movies = () => {
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="title" render={({ field }) => (
                   <FormItem>
@@ -261,7 +270,7 @@ const Movies = () => {
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem>
                   <Label>Deskripsi</Label>
-                  <FormControl><Textarea {...field} rows={4} /></FormControl>
+                  <FormControl><Textarea {...field} rows={3} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -318,25 +327,48 @@ const Movies = () => {
                   </FormItem>
                 )} />
               </div>
-              <FormField control={form.control} name="access_type" render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Tipe Akses</FormLabel>
-                  <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex items-center space-x-4">
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl><RadioGroupItem value="free" /></FormControl>
-                        <FormLabel className="font-normal">Gratis</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl><RadioGroupItem value="premium" /></FormControl>
-                        <FormLabel className="font-normal">Premium</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <DialogFooter>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="access_type" render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Tipe Akses</FormLabel>
+                    <FormControl>
+                      <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex items-center space-x-4 pt-2">
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="free" /></FormControl>
+                          <FormLabel className="font-normal">Gratis</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="premium" /></FormControl>
+                          <FormLabel className="font-normal">Premium</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Aktif</SelectItem>
+                          <SelectItem value="inactive">Tidak Aktif</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
                 <Button type="submit" disabled={mutation.isPending}>
                   {mutation.isPending ? "Menyimpan..." : "Simpan"}

@@ -16,7 +16,7 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ["users", searchTerm],
+    queryKey: ["user_details", searchTerm],
     queryFn: async () => {
       let query = supabase.from("user_details").select("*");
       if (searchTerm) {
@@ -35,7 +35,7 @@ const Users = () => {
     },
     onSuccess: () => {
       showSuccess("Status pengguna berhasil diperbarui.");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["user_details"] });
     },
     onError: (error) => {
       showError(`Gagal memperbarui status: ${error.message}`);
