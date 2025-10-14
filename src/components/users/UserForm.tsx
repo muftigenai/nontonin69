@@ -21,7 +21,7 @@ const userSchema = z.object({
   full_name: z.string().min(1, "Nama lengkap tidak boleh kosong"),
   email: z.string().email("Email tidak valid"),
   password: z.string().min(8, "Password minimal 8 karakter"),
-  role: z.enum(["admin", "super_admin"], {
+  role: z.enum(["user", "admin", "super_admin"], {
     required_error: "Peran harus dipilih",
   }),
 });
@@ -41,7 +41,7 @@ const UserForm = ({ onOpenChange, onSuccess }: UserFormProps) => {
       full_name: "",
       email: "",
       password: "",
-      role: "admin",
+      role: "user",
     },
   });
 
@@ -127,6 +127,7 @@ const UserForm = ({ onOpenChange, onSuccess }: UserFormProps) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
                     </SelectContent>
