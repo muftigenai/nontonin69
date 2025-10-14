@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  role: string | null;
   signOut: () => void;
 };
 
@@ -15,50 +14,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const getSessionAndProfile = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+    const getSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
       if (error) {
         console.error("Error getting session:", error);
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-        setRole(profile?.role || null);
-      } else {
-        setRole(null);
-      }
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
       setLoading(false);
     };
 
-    getSessionAndProfile();
+    getSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-        setRole(profile?.role || null);
-      } else {
-        setRole(null);
-      }
       setLoading(false);
     });
 
@@ -69,14 +43,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setRole(null);
     navigate("/login");
   };
 
   const value = {
     session,
     user,
-    role,
     signOut,
   };
 
