@@ -1,144 +1,205 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { showSuccess, showError } from "@/utils/toast";
-import MovieForm from "@/components/movies/MovieForm";
-import DeleteConfirmationDialog from "@/components/movies/DeleteConfirmationDialog";
-import { Movie } from "@/types";
+import { PlusCircle, Edit, Trash2, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
+const movieSchema = z.object({
+  title: z.string().min(1, "Judul tidak boleh kosong"),
+  description: z.string().min(1, "Deskripsi tidak boleh kosong"),
+  poster_url: z.string().url("URL poster tidak valid"),
+  trailer_url: z.string().url("URL trailer tidak valid"),
+  release_date: z.string().min(1, "Tanggal rilis tidak boleh kosong"),
+  genre: z.string().min(1, "Genre tidak boleh kosong"),
+  duration: z.coerce.number().min(1, "Durasi harus lebih dari 0"),
+  price: z.coerce.number().min(0, "Harga tidak boleh negatif"),
+  subtitle_url: z.string().url("URL subtitle tidak valid").optional().or(z.literal('')),
+  access_type: z.enum(["free", "premium"], {
+    required_error: "Anda perlu memilih tipe akses.",
+  }),
+});
+
+type MovieFormValues = z.infer<typeof movieSchema>;
 
 const Movies = () => {
   const queryClient = useQueryClient();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMovie, setEditingMovie] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch movies
+  const form = useForm<MovieFormValues>({
+    resolver: zodResolver(movieSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      poster_url: "",
+      trailer_url: "",
+      release_date: "",
+      genre: "",
+      duration: 0,
+      price: 0,
+      subtitle_url: "",
+      access_type: "free",
+    },
+  });
+
   const { data: movies, isLoading } = useQuery({
-    queryKey: ["movies", searchTerm],
+    queryKey: ["movies"],
     queryFn: async () => {
-      let query = supabase.from("movies").select("*").order("created_at", { ascending: false });
-      if (searchTerm) {
-        query = query.ilike("title", `%${searchTerm}%`);
-      }
-      const { data, error } = await query;
+      const { data, error } = await supabase.from("movies").select("*").order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data;
     },
   });
 
-  // Delete mutation
+  const filteredMovies = useMemo(() => {
+    if (!movies) return [];
+    return movies.filter(movie =>
+      movie.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [movies, searchTerm]);
+
+  const mutation = useMutation({
+    mutationFn: async (values: MovieFormValues) => {
+      const movieData = { ...values };
+      const { error } = editingMovie
+        ? await supabase.from("movies").update(movieData).eq("id", editingMovie.id)
+        : await supabase.from("movies").insert([movieData]);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      showSuccess(`Film berhasil ${editingMovie ? "diperbarui" : "ditambahkan"}.`);
+      queryClient.invalidateQueries({ queryKey: ["movies"] });
+      setIsDialogOpen(false);
+      setEditingMovie(null);
+      form.reset();
+    },
+    onError: (error) => {
+      showError(`Gagal: ${error.message}`);
+    },
+  });
+
   const deleteMutation = useMutation({
-    mutationFn: async (movieId: string) => {
-      const { error } = await supabase.from("movies").delete().eq("id", movieId);
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("movies").delete().eq("id", id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       showSuccess("Film berhasil dihapus.");
       queryClient.invalidateQueries({ queryKey: ["movies"] });
-      setIsDeleteConfirmOpen(false);
-      setSelectedMovie(null);
     },
     onError: (error) => {
-      showError(`Gagal menghapus film: ${error.message}`);
+      showError(`Gagal menghapus: ${error.message}`);
     },
   });
 
   const handleAdd = () => {
-    setSelectedMovie(null);
-    setIsFormOpen(true);
+    setEditingMovie(null);
+    form.reset({
+      title: "", description: "", poster_url: "", trailer_url: "",
+      release_date: "", genre: "", duration: 0, price: 0, subtitle_url: "", access_type: "free"
+    });
+    setIsDialogOpen(true);
   };
 
-  const handleEdit = (movie: Movie) => {
-    setSelectedMovie(movie);
-    setIsFormOpen(true);
+  const handleEdit = (movie: any) => {
+    setEditingMovie(movie);
+    form.reset({
+      ...movie,
+      duration: movie.duration || 0,
+      price: movie.price || 0,
+      subtitle_url: movie.subtitle_url || "",
+      access_type: movie.access_type || "free",
+    });
+    setIsDialogOpen(true);
   };
 
-  const handleDelete = (movie: Movie) => {
-    setSelectedMovie(movie);
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (selectedMovie) {
-      deleteMutation.mutate(selectedMovie.id);
+  const handleDelete = (id: string) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus film ini?")) {
+      deleteMutation.mutate(id);
     }
+  };
+
+  const onSubmit = (values: MovieFormValues) => {
+    mutation.mutate(values);
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Film</h1>
-          <p className="text-muted-foreground">Kelola daftar film di sini.</p>
+          <h1 className="text-3xl font-bold">Daftar Film</h1>
+          <p className="text-muted-foreground">Kelola semua film yang tersedia di platform.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Cari berdasarkan judul..."
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Button onClick={handleAdd} className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5" />
-            <span>Tambah Film</span>
-          </Button>
-        </div>
+        <Button onClick={handleAdd} className="flex items-center gap-2">
+          <PlusCircle className="h-5 w-5" />
+          <span>Tambah Film</span>
+        </Button>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Cari film..."
+          className="pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Poster</TableHead>
               <TableHead>Judul</TableHead>
               <TableHead>Genre</TableHead>
-              <TableHead>Harga</TableHead>
+              <TableHead>Tanggal Rilis</TableHead>
+              <TableHead>Tipe Akses</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Aksi</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
+                <TableCell colSpan={6} className="text-center">Memuat data film...</TableCell>
+              </TableRow>
+            ) : filteredMovies.length === 0 ? (
+              <TableRow>
                 <TableCell colSpan={6} className="text-center">
-                  Memuat data...
+                  {searchTerm ? "Film tidak ditemukan." : "Belum ada film."}
                 </TableCell>
               </TableRow>
             ) : (
-              movies?.map((movie) => (
+              filteredMovies.map((movie) => (
                 <TableRow key={movie.id}>
-                  <TableCell>
-                    <img
-                      src={movie.poster_url || "/placeholder.svg"}
-                      alt={movie.title}
-                      className="h-16 w-12 rounded-md object-cover"
-                    />
-                  </TableCell>
                   <TableCell className="font-medium">{movie.title}</TableCell>
                   <TableCell>{movie.genre}</TableCell>
-                  <TableCell>{movie.price ? `Rp ${movie.price.toLocaleString("id-ID")}` : "-"}</TableCell>
+                  <TableCell>{new Date(movie.release_date).toLocaleDateString("id-ID")}</TableCell>
                   <TableCell>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        movie.status === "active"
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-yellow-500/20 text-yellow-400"
-                      }`}
-                    >
-                      {movie.status === "active" ? "Aktif" : "Tidak Aktif"}
-                    </span>
+                    <Badge variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
+                      {movie.access_type === 'premium' ? 'Premium' : 'Gratis'}
+                    </Badge>
                   </TableCell>
                   <TableCell>
+                    <Badge variant={movie.status === 'active' ? 'default' : 'destructive'}>{movie.status}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -147,9 +208,15 @@ const Movies = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(movie)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(movie)} className="text-red-500">
-                          Hapus
+                        <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleEdit(movie)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          <span>Edit</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDelete(movie.id)} className="text-red-600">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          <span>Hapus</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -161,22 +228,113 @@ const Movies = () => {
         </Table>
       </div>
 
-      {isFormOpen && (
-        <MovieForm
-          movie={selectedMovie}
-          onOpenChange={setIsFormOpen}
-          onSuccess={() => {
-            setIsFormOpen(false);
-            setSelectedMovie(null);
-          }}
-        />
-      )}
-
-      <DeleteConfirmationDialog
-        open={isDeleteConfirmOpen}
-        onOpenChange={setIsDeleteConfirmOpen}
-        onConfirm={handleConfirmDelete}
-      />
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingMovie ? "Edit Film" : "Tambah Film Baru"}</DialogTitle>
+            <DialogDescription>
+              {editingMovie ? "Perbarui detail film di bawah ini." : "Isi formulir di bawah ini untuk menambahkan film baru."}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="title" render={({ field }) => (
+                  <FormItem>
+                    <Label>Judul</Label>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="genre" render={({ field }) => (
+                  <FormItem>
+                    <Label>Genre</Label>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <Label>Deskripsi</Label>
+                  <FormControl><Textarea {...field} rows={4} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="poster_url" render={({ field }) => (
+                  <FormItem>
+                    <Label>URL Poster</Label>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="trailer_url" render={({ field }) => (
+                  <FormItem>
+                    <Label>URL Trailer</Label>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="subtitle_url" render={({ field }) => (
+                <FormItem>
+                  <Label>URL Subtitle (Opsional)</Label>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField control={form.control} name="release_date" render={({ field }) => (
+                  <FormItem>
+                    <Label>Tanggal Rilis</Label>
+                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="duration" render={({ field }) => (
+                  <FormItem>
+                    <Label>Durasi (menit)</Label>
+                    <FormControl><Input type="number" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="price" render={({ field }) => (
+                  <FormItem>
+                    <Label>Harga (Rp)</Label>
+                    <FormControl><Input type="number" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="access_type" render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Tipe Akses</FormLabel>
+                  <FormControl>
+                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex items-center space-x-4">
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl><RadioGroupItem value="free" /></FormControl>
+                        <FormLabel className="font-normal">Gratis</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl><RadioGroupItem value="premium" /></FormControl>
+                        <FormLabel className="font-normal">Premium</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
+                <Button type="submit" disabled={mutation.isPending}>
+                  {mutation.isPending ? "Menyimpan..." : "Simpan"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
