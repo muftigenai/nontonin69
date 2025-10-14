@@ -12,3 +12,14 @@ export type Movie = {
   status: "active" | "inactive" | null;
   subtitle_url: string | null;
 };
+
+export type UserDetails = {
+  id: string;
+  email?: string;
+  created_at: string;
+  role: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  subscription_status: string | null;
+  status: string | null;
+};
