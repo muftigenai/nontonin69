@@ -1,7 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { Clapperboard, Home, LineChart, Receipt, Settings, Users } from "lucide-react";
+import { Bell, Clapperboard, Home, LineChart, Receipt, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 const navItems = [
   { to: "/", icon: Home, label: "Dashboard" },
@@ -10,6 +9,7 @@ const navItems = [
   { to: "/transactions", icon: Receipt, label: "Transaksi" },
   { to: "/reports", icon: LineChart, label: "Laporan" },
   { to: "/settings", icon: Settings, label: "Pengaturan" },
+  { to: "/logs", icon: Bell, label: "Notifikasi & Log" },
 ];
 
 const Sidebar = () => {
