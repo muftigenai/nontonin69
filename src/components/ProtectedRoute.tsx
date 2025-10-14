@@ -1,18 +1,14 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuth } from "@/providers/AuthProvider";
+import { Navigate, Outlet } from "react-router-dom";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>; // Atau tampilkan komponen skeleton/spinner
-  }
+const ProtectedRoute = () => {
+  const { session } = useAuth();
 
   if (!session) {
     return <Navigate to="/login" replace />;
   }
 
-  return children ? <>{children}</> : <Outlet />;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;
