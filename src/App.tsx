@@ -8,10 +8,16 @@ import MovieDetails from "./pages/MovieDetails";
 import WatchMovie from "./pages/WatchMovie";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
-import Auth from "./pages/Auth";
+import Login from "./pages/Login";
 import UpdatePassword from "./pages/UpdatePassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProfilePage from "./pages/Profile";
+import { AuthProvider } from "./providers/AuthProvider";
+import Movies from "./pages/Movies";
+import Users from "./pages/Users";
+import Transactions from "./pages/Transactions";
+import Reports from "./pages/Reports";
+import ActivityLogPage from "./pages/ActivityLog";
 
 const queryClient = new QueryClient();
 
@@ -21,18 +27,26 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Router>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/update-password" element={<UpdatePassword />} />
-            <Route element={<Layout />}>
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/movie/:id" element={<ProtectedRoute><MovieDetails /></ProtectedRoute>} />
-              <Route path="/watch/:id" element={<ProtectedRoute><WatchMovie /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            </Route>
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
+              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/movies" element={<Movies />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/logs" element={<ActivityLogPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                {/* Placeholder routes from before */}
+                <Route path="/movie/:id" element={<MovieDetails />} />
+                <Route path="/watch/:id" element={<WatchMovie />} />
+                <Route path="/history" element={<History />} />
+              </Route>
+            </Routes>
+          </AuthProvider>
         </Router>
       </TooltipProvider>
     </QueryClientProvider>
