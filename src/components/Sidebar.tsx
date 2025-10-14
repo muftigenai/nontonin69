@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", icon: Home, label: "Dashboard" },
   { to: "/movies", icon: Clapperboard, label: "Film" },
+  { to: "/users", icon: Users, label: "Pengguna" },
   { to: "/transactions", icon: Receipt, label: "Transaksi" },
   { to: "/reports", icon: LineChart, label: "Laporan" },
-  { to: "/users", icon: Users, label: "Manajemen Pengguna" },
   { to: "/settings", icon: Settings, label: "Pengaturan" },
   { to: "/logs", icon: Bell, label: "Notifikasi & Log" },
 ];
