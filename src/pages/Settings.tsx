@@ -4,8 +4,69 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminManagement from "@/components/admin/AdminManagement";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { showSuccess, showError } from "@/utils/toast";
+import React from "react";
+
+const generalSettingsSchema = z.object({
+  appName: z.string().min(1, "Nama aplikasi tidak boleh kosong"),
+});
 
 const Settings = () => {
+  const queryClient = useQueryClient();
+
+  const form = useForm<z.infer<typeof generalSettingsSchema>>({
+    resolver: zodResolver(generalSettingsSchema),
+    defaultValues: {
+      appName: "",
+    },
+  });
+
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ["app_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("app_settings").select("*");
+      if (error) throw new Error(error.message);
+      const settingsObj = data.reduce((acc, setting) => {
+        acc[setting.key] = setting.value;
+        return acc;
+      }, {} as Record<string, string>);
+      return settingsObj;
+    },
+  });
+
+  React.useEffect(() => {
+    if (settings?.app_name) {
+      form.setValue("appName", settings.app_name);
+    }
+  }, [settings, form]);
+
+  const updateSettingMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const { error } = await supabase
+        .from("app_settings")
+        .update({ value })
+        .eq("key", key);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      showSuccess("Pengaturan berhasil disimpan.");
+      queryClient.invalidateQueries({ queryKey: ["app_settings"] });
+    },
+    onError: (error) => {
+      showError(`Gagal menyimpan: ${error.message}`);
+    },
+  });
+
+  const onGeneralSubmit = (values: z.infer<typeof generalSettingsSchema>) => {
+    updateSettingMutation.mutate({ key: "app_name", value: values.appName });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -21,23 +82,39 @@ const Settings = () => {
         </TabsList>
         <TabsContent value="general">
           <Card>
-            <CardHeader>
-              <CardTitle>Pengaturan Umum</CardTitle>
-              <CardDescription>Ubah nama dan logo aplikasi Anda di sini.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="appName">Nama Aplikasi</Label>
-                <Input id="appName" defaultValue="Nontonin" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="logo">Logo</Label>
-                <Input id="logo" type="file" />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button>Simpan Perubahan</Button>
-            </CardFooter>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onGeneralSubmit)}>
+                <CardHeader>
+                  <CardTitle>Pengaturan Umum</CardTitle>
+                  <CardDescription>Ubah nama dan logo aplikasi Anda di sini.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="appName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label htmlFor="appName">Nama Aplikasi</Label>
+                        <FormControl>
+                          <Input id="appName" {...field} disabled={isLoadingSettings} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="logo">Logo</Label>
+                    <Input id="logo" type="file" disabled />
+                     <p className="text-sm text-muted-foreground">Fitur unggah logo belum tersedia.</p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" disabled={updateSettingMutation.isPending}>
+                    {updateSettingMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
           </Card>
         </TabsContent>
         <TabsContent value="subscription">
@@ -57,7 +134,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button>Simpan Harga</Button>
+              <Button disabled>Simpan Harga</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -74,7 +151,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button>Simpan Konfigurasi</Button>
+              <Button disabled>Simpan Konfigurasi</Button>
             </CardFooter>
           </Card>
         </TabsContent>
