@@ -11,6 +11,7 @@ import { Check, ChevronsUpDown, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { showSuccess, showError } from "@/utils/toast";
 import { Badge } from "@/components/ui/badge";
+import { UserDetails } from "@/types";
 
 const AdminManagement = () => {
   const queryClient = useQueryClient();
@@ -19,13 +20,13 @@ const AdminManagement = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const { data: usersData, isLoading: isLoadingUsers } = useQuery({
-    queryKey: ["profiles_for_admin"],
+    queryKey: ["all_user_details_for_admin"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, role, status, user_details(email)");
+        .from("user_details")
+        .select("id, full_name, role, status, email");
       if (error) throw new Error(error.message);
-      return data;
+      return data as UserDetails[];
     },
   });
 
@@ -42,7 +43,7 @@ const AdminManagement = () => {
     },
     onSuccess: () => {
       showSuccess("Peran pengguna berhasil diperbarui.");
-      queryClient.invalidateQueries({ queryKey: ["profiles_for_admin"] });
+      queryClient.invalidateQueries({ queryKey: ["all_user_details_for_admin"] });
       setAddAdminDialogOpen(false);
       setSelectedUserId(null);
     },
@@ -99,7 +100,7 @@ const AdminManagement = () => {
                 admins.map((admin) => (
                   <TableRow key={admin.id}>
                     <TableCell>{admin.full_name || "N/A"}</TableCell>
-                    <TableCell>{admin.user_details?.email || "N/A"}</TableCell>
+                    <TableCell>{admin.email || "N/A"}</TableCell>
                     <TableCell>
                       <Badge variant={admin.status === 'active' ? 'default' : 'destructive'}>{admin.status}</Badge>
                     </TableCell>
@@ -139,7 +140,7 @@ const AdminManagement = () => {
                   className="w-full justify-between"
                 >
                   {selectedUserId
-                    ? `${selectedUser?.full_name || 'Pengguna tidak dikenal'} (${selectedUser?.user_details?.email || 'N/A'})`
+                    ? `${selectedUser?.full_name || 'Pengguna tidak dikenal'} (${selectedUser?.email || 'N/A'})`
                     : "Pilih pengguna..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -153,7 +154,7 @@ const AdminManagement = () => {
                       {nonAdmins.map((user) => (
                         <CommandItem
                           key={user.id}
-                          value={`${user.full_name} ${user.user_details?.email}`}
+                          value={`${user.full_name} ${user.email}`}
                           onSelect={() => {
                             setSelectedUserId(user.id);
                             setPopoverOpen(false);
@@ -165,7 +166,7 @@ const AdminManagement = () => {
                               selectedUserId === user.id ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {user.full_name} ({user.user_details?.email})
+                          {user.full_name} ({user.email})
                         </CommandItem>
                       ))}
                     </CommandGroup>
