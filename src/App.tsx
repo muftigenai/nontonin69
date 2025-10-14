@@ -1,14 +1,50 @@
-import './App.css';
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Movies from "./pages/Movies";
+import Users from "./pages/Users";
+import Transactions from "./pages/Transactions";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./providers/AuthProvider";
 
-function App() {
+const queryClient = new QueryClient();
+
+const App = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
-      <h1 className="text-4xl font-bold mb-4">Selamat Datang di Aplikasi Anda</h1>
-      <p className="text-lg text-muted-foreground">
-        Ini adalah titik awal. Beri tahu saya apa yang ingin Anda bangun.
-      </p>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route 
+                path="/*" 
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="movies" element={<Movies />} />
+                <Route path="users" element={<Users />} />
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+            </Routes>
+          </AuthProvider>
+        </Router>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
-}
+};
 
 export default App;
