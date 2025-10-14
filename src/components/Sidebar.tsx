@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Bell, Clapperboard, Home, LineChart, Receipt, Settings, Users } from "lucide-react";
+import { Bell, Clapperboard, Home, LineChart, Receipt, Settings, Users, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/reports", icon: LineChart, label: "Laporan" },
   { to: "/settings", icon: Settings, label: "Pengaturan" },
   { to: "/logs", icon: Bell, label: "Notifikasi & Log" },
+  { to: "/public", icon: Globe, label: "Public" },
 ];
 
 const Sidebar = () => {

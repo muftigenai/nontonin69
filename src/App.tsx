@@ -15,6 +15,7 @@ import ActivityLog from "./pages/ActivityLog";
 import Login from "./pages/Login";
 import { AuthProvider } from "./providers/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PublicPage from "./pages/Public";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/logs" element={<ActivityLog />} />
+                <Route path="/public" element={<PublicPage />} />
               </Route>
             </Route>
 
