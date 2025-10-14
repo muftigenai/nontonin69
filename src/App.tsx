@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -15,7 +15,15 @@ import ActivityLog from "./pages/ActivityLog";
 import Login from "./pages/Login";
 import { AuthProvider } from "./providers/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
-import PublicPage from "./pages/Public";
+
+// Public Pages
+import PublicLayout from "./pages/public/PublicLayout";
+import PublicHomePage from "./pages/public/PublicHomePage";
+import CategoriesPage from "./pages/public/CategoriesPage";
+import LibraryPage from "./pages/public/LibraryPage";
+import SubscribePage from "./pages/public/SubscribePage";
+import AccountPage from "./pages/public/AccountPage";
+import MovieDetailPage from "./pages/public/MovieDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -29,17 +37,27 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             
-            <Route element={<ProtectedRoute />}>
+            {/* Admin Routes */}
+            <Route path="/" element={<ProtectedRoute />}>
               <Route element={<Layout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/movies" element={<Movies />} />
-                <Route path="/users" element={<Users />} />
-                <Route path="/transactions" element={<Transactions />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/logs" element={<ActivityLog />} />
-                <Route path="/public" element={<PublicPage />} />
+                <Route index element={<Dashboard />} />
+                <Route path="movies" element={<Movies />} />
+                <Route path="users" element={<Users />} />
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="logs" element={<ActivityLog />} />
               </Route>
+            </Route>
+
+            {/* Public Routes */}
+            <Route path="/public" element={<PublicLayout />}>
+              <Route index element={<PublicHomePage />} />
+              <Route path="categories" element={<CategoriesPage />} />
+              <Route path="library" element={<LibraryPage />} />
+              <Route path="subscribe" element={<SubscribePage />} />
+              <Route path="account" element={<AccountPage />} />
+              <Route path="movie/:id" element={<MovieDetailPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
