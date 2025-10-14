@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { UserDetails } from "@/types";
+import { navItems } from "@/config/nav";
+import { cn } from "@/lib/utils";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -43,7 +45,7 @@ const Header = () => {
   const signOut = async () => {
     await supabase.auth.signOut();
     queryClient.clear();
-    navigate("/auth");
+    navigate("/login");
   };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -64,69 +66,39 @@ const Header = () => {
   }, [queryClient]);
 
   return (
-    <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 z-50">
-      <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-lg font-semibold md:text-base"
-        >
-          <Film className="h-6 w-6" />
-          <span className="sr-only">MovieApp</span>
-        </Link>
-        <Link
-          to="/"
-          className="text-foreground transition-colors hover:text-foreground"
-        >
-          Dashboard
-        </Link>
-        <Link
-          to="/history"
-          className="text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Riwayat
-        </Link>
-        {userDetails?.role === 'admin' && (
-          <Link
-            to="/settings"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Pengaturan
-          </Link>
-        )}
-      </nav>
+    <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">
             <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
+            <span className="sr-only">Buka menu navigasi</span>
           </Button>
         </SheetTrigger>
         <SheetContent side="left">
-          <nav className="grid gap-6 text-lg font-medium">
+          <nav className="grid gap-4 text-lg font-medium">
             <Link
-              to="#"
-              className="flex items-center gap-2 text-lg font-semibold"
+              to="/"
+              className="mb-4 flex items-center gap-2 text-lg font-semibold"
             >
               <Film className="h-6 w-6" />
-              <span className="sr-only">MovieApp</span>
+              <span>Nontonin</span>
             </Link>
-            <Link to="/" className="hover:text-foreground">
-              Dashboard
-            </Link>
-            <Link
-              to="/history"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Riwayat
-            </Link>
-            {userDetails?.role === 'admin' && (
-              <Link
-                to="/settings"
-                className="text-muted-foreground hover:text-foreground"
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-accent hover:text-accent-foreground",
+                    isActive && "bg-accent text-accent-foreground"
+                  )
+                }
               >
-                Pengaturan
-              </Link>
-            )}
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
         </SheetContent>
       </Sheet>
@@ -152,7 +124,7 @@ const Header = () => {
                   <CircleUser className="h-5 w-5" />
                 </AvatarFallback>
               </Avatar>
-              <span className="sr-only">Toggle user menu</span>
+              <span className="sr-only">Buka menu pengguna</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
