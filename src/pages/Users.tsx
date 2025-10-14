@@ -5,28 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, UserX, UserCheck, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Search, UserX, UserCheck } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { UserDetails } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import UserForm from "@/components/users/UserForm";
-import { useAuth } from "@/providers/AuthProvider";
 
 const Users = () => {
   const queryClient = useQueryClient();
-  const { role } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users", searchTerm],
     queryFn: async () => {
       let query = supabase.from("user_details").select("*");
       if (searchTerm) {
-        query = query.or(`email.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%`);
+        query = query.ilike("email", `%${searchTerm}%`);
       }
-      const { data, error } = await query.order("created_at", { ascending: false });
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
       return data as UserDetails[];
     },
@@ -60,20 +56,6 @@ const Users = () => {
       .toUpperCase();
   };
 
-  const getRoleBadgeVariant = (role: string | null) => {
-    switch (role) {
-      case "super_admin":
-        return "default";
-      case "admin":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
-
-  // Menentukan apakah pengguna adalah admin atau super_admin
-  const isAdminOrSuperAdmin = role === 'admin' || role === 'super_admin';
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -81,24 +63,15 @@ const Users = () => {
           <h1 className="text-3xl font-bold">Pengguna</h1>
           <p className="text-muted-foreground">Kelola pengguna terdaftar di sini.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Cari email atau nama..."
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {/* Tombol ini sekarang akan muncul untuk admin dan super_admin */}
-          {isAdminOrSuperAdmin && (
-            <Button onClick={() => setIsUserFormOpen(true)} className="flex items-center gap-2">
-              <PlusCircle className="h-5 w-5" />
-              <span>Tambah Pengguna</span>
-            </Button>
-          )}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Cari berdasarkan email..."
+            className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
@@ -107,7 +80,6 @@ const Users = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Pengguna</TableHead>
-              <TableHead>Peran</TableHead>
               <TableHead>Langganan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Tanggal Daftar</TableHead>
@@ -117,7 +89,7 @@ const Users = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   Memuat data pengguna...
                 </TableCell>
               </TableRow>
@@ -135,11 +107,6 @@ const Users = () => {
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">
-                      {user.role?.replace("_", " ") || "User"}
-                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.subscription_status === "premium" ? "default" : "secondary"}>
@@ -182,12 +149,6 @@ const Users = () => {
           </TableBody>
         </Table>
       </div>
-      {isUserFormOpen && (
-        <UserForm
-          onOpenChange={setIsUserFormOpen}
-          onSuccess={() => setIsUserFormOpen(false)}
-        />
-      )}
     </div>
   );
 };
