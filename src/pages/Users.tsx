@@ -11,9 +11,11 @@ import { UserDetails } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import UserForm from "@/components/users/UserForm";
+import { useAuth } from "@/providers/AuthProvider";
 
 const Users = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
 
@@ -87,10 +89,12 @@ const Users = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button onClick={() => setIsUserFormOpen(true)} className="flex items-center gap-2">
-            <PlusCircle className="h-5 w-5" />
-            <span>Tambah Pengguna</span>
-          </Button>
+          {role === "super_admin" && (
+            <Button onClick={() => setIsUserFormOpen(true)} className="flex items-center gap-2">
+              <PlusCircle className="h-5 w-5" />
+              <span>Tambah Pengguna</span>
+            </Button>
+          )}
         </div>
       </div>
 
