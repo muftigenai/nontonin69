@@ -17,12 +17,14 @@ import { PlusCircle, Edit, Trash2, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { Movie } from "@/types";
 
 const movieSchema = z.object({
   title: z.string().min(1, "Judul tidak boleh kosong"),
   description: z.string().min(1, "Deskripsi tidak boleh kosong"),
   poster_url: z.string().url("URL poster tidak valid"),
   trailer_url: z.string().url("URL trailer tidak valid"),
+  video_url: z.string().url("URL film tidak valid").optional().or(z.literal('')),
   release_date: z.string().min(1, "Tanggal rilis tidak boleh kosong"),
   genre: z.string().min(1, "Genre tidak boleh kosong"),
   duration: z.coerce.number().min(1, "Durasi harus lebih dari 0"),
@@ -38,7 +40,7 @@ type MovieFormValues = z.infer<typeof movieSchema>;
 const Movies = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingMovie, setEditingMovie] = useState<any>(null);
+  const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const form = useForm<MovieFormValues>({
@@ -48,6 +50,7 @@ const Movies = () => {
       description: "",
       poster_url: "",
       trailer_url: "",
+      video_url: "",
       release_date: "",
       genre: "",
       duration: 0,
@@ -62,7 +65,7 @@ const Movies = () => {
     queryFn: async () => {
       const { data, error } = await supabase.from("movies").select("*").order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return data;
+      return data as Movie[];
     },
   });
 
@@ -110,19 +113,20 @@ const Movies = () => {
   const handleAdd = () => {
     setEditingMovie(null);
     form.reset({
-      title: "", description: "", poster_url: "", trailer_url: "",
+      title: "", description: "", poster_url: "", trailer_url: "", video_url: "",
       release_date: "", genre: "", duration: 0, price: 0, subtitle_url: "", access_type: "free"
     });
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (movie: any) => {
+  const handleEdit = (movie: Movie) => {
     setEditingMovie(movie);
     form.reset({
       ...movie,
       duration: movie.duration || 0,
       price: movie.price || 0,
       subtitle_url: movie.subtitle_url || "",
+      video_url: movie.video_url || "",
       access_type: movie.access_type || "free",
     });
     setIsDialogOpen(true);
@@ -190,7 +194,7 @@ const Movies = () => {
                 <TableRow key={movie.id}>
                   <TableCell className="font-medium">{movie.title}</TableCell>
                   <TableCell>{movie.genre}</TableCell>
-                  <TableCell>{new Date(movie.release_date).toLocaleDateString("id-ID")}</TableCell>
+                  <TableCell>{new Date(movie.release_date || "").toLocaleDateString("id-ID")}</TableCell>
                   <TableCell>
                     <Badge variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
                       {movie.access_type === 'premium' ? 'Premium' : 'Gratis'}
@@ -277,6 +281,13 @@ const Movies = () => {
                   </FormItem>
                 )} />
               </div>
+               <FormField control={form.control} name="video_url" render={({ field }) => (
+                <FormItem>
+                  <Label>URL Film</Label>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <FormField control={form.control} name="subtitle_url" render={({ field }) => (
                 <FormItem>
                   <Label>URL Subtitle (Opsional)</Label>
