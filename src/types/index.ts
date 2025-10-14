@@ -23,3 +23,19 @@ export type UserDetails = {
   subscription_status: string | null;
   status: string | null;
 };
+
+export type Transaction = {
+  id: string;
+  created_at: string;
+  description: string | null;
+  payment_method: string | null;
+  amount: number;
+  status: "successful" | "pending" | "failed";
+  user_details: {
+    email: string | null;
+    full_name: string | null;
+  } | null;
+  movies: {
+    title: string | null;
+  } | null;
+};
