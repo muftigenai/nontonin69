@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AdminManagement from "@/components/admin/AdminManagement";
 
 const Settings = () => {
   return (
@@ -78,19 +79,7 @@ const Settings = () => {
           </Card>
         </TabsContent>
         <TabsContent value="admins">
-           <Card>
-            <CardHeader>
-              <CardTitle>Kelola Admin</CardTitle>
-              <CardDescription>Tambah atau hapus administrator lain.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Placeholder for admin list and add form */}
-              <p className="text-sm text-muted-foreground">Fitur manajemen admin akan tersedia di sini.</p>
-            </CardContent>
-            <CardFooter>
-              <Button>Tambah Admin Baru</Button>
-            </CardFooter>
-          </Card>
+           <AdminManagement />
         </TabsContent>
       </Tabs>
     </div>
