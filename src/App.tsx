@@ -1,51 +1,42 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import NotFound from "./pages/NotFound";
-import Layout from "./components/Layout";
+import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import Layout from "./layouts/Layout";
 import Dashboard from "./pages/Dashboard";
-import Movies from "./pages/Movies";
-import Users from "./pages/Users";
-import Transactions from "./pages/Transactions";
-import Reports from "./pages/Reports";
+import MovieDetails from "./pages/MovieDetails";
+import WatchMovie from "./pages/WatchMovie";
 import Settings from "./pages/Settings";
-import ActivityLog from "./pages/ActivityLog";
-import Login from "./pages/Login";
-import { AuthProvider } from "./providers/AuthProvider";
+import History from "./pages/History";
+import Auth from "./pages/Auth";
+import UpdatePassword from "./pages/UpdatePassword";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ProfilePage from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            
-            <Route element={<ProtectedRoute />}>
-              <Route element={<Layout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/movies" element={<Movies />} />
-                <Route path="/users" element={<Users />} />
-                <Route path="/transactions" element={<Transactions />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/logs" element={<ActivityLog />} />
-              </Route>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/update-password" element={<UpdatePassword />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/movie/:id" element={<ProtectedRoute><MovieDetails /></ProtectedRoute>} />
+              <Route path="/watch/:id" element={<ProtectedRoute><WatchMovie /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             </Route>
-
-            <Route path="*" element={<NotFound />} />
           </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+        </Router>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
