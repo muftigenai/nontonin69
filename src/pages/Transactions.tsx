@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MoreHorizontal, Search, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Transaction } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,9 +34,8 @@ const Transactions = () => {
       }
 
       if (searchTerm) {
-        // This is a bit tricky as we're searching on a related table.
-        // For simplicity, this example won't implement search on user email directly.
-        // A more advanced solution would use an RPC function in Supabase.
+        // Search on ID or description
+        query = query.or(`id.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
       }
 
       const { data, error } = await query.order("created_at", { ascending: false });
@@ -57,6 +57,14 @@ const Transactions = () => {
     }
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -69,11 +77,10 @@ const Transactions = () => {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Cari ID atau pengguna..."
+              placeholder="Cari ID atau deskripsi..."
               className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              disabled // Disabled for now as search on related tables is complex
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -87,7 +94,7 @@ const Transactions = () => {
               <SelectItem value="failed">Gagal</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button variant="outline" className="flex items-center gap-2" disabled>
             <Download className="h-4 w-4" />
             <span>Export</span>
           </Button>
@@ -108,9 +115,20 @@ const Transactions = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                </TableRow>
+              ))
+            ) : transactions?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center">
-                  Memuat data transaksi...
+                  Tidak ada data transaksi.
                 </TableCell>
               </TableRow>
             ) : (
@@ -121,7 +139,7 @@ const Transactions = () => {
                     <div className="text-sm text-muted-foreground">{trx.user_details?.email}</div>
                   </TableCell>
                   <TableCell>{trx.description || trx.movies?.title || "N/A"}</TableCell>
-                  <TableCell>Rp {trx.amount.toLocaleString("id-ID")}</TableCell>
+                  <TableCell>{formatPrice(trx.amount)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(trx.status)}>{trx.status}</Badge>
                   </TableCell>

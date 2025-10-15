@@ -2,21 +2,63 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import RevenueChart from "@/components/charts/RevenueChart";
 import UserGrowthChart from "@/components/charts/UserGrowthChart";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Reports = () => {
-  const topMovies = [
-    { rank: 1, title: "Action Movie 1", purchases: 1200, revenue: "Rp 60.000.000" },
-    { rank: 2, title: "Comedy Movie 2", purchases: 950, revenue: "Rp 42.750.000" },
-    { rank: 3, title: "Sci-Fi Movie 3", purchases: 800, revenue: "Rp 44.000.000" },
-    { rank: 4, title: "Horror Movie 4", purchases: 750, revenue: "Rp 30.000.000" },
-    { rank: 5, title: "Drama Movie 5", purchases: 600, revenue: "Rp 30.000.000" },
-  ];
+  // 1. Fetch Top Movies (using the new view)
+  const { data: topMovies, isLoading: isLoadingTopMovies } = useQuery({
+    queryKey: ["topMovies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("movie_sales_summary")
+        .select("*")
+        .order("total_revenue", { ascending: false })
+        .limit(5);
+      if (error) throw new Error(error.message);
+      return data as { title: string, total_purchases: number, total_revenue: number }[];
+    },
+  });
 
-  const topGenres = [
-    { rank: 1, genre: "Action", views: 15000 },
-    { rank: 2, genre: "Comedy", views: 12000 },
-    { rank: 3, genre: "Sci-Fi", views: 10000 },
-  ];
+  // 2. Fetch Top Genres (simple aggregation on client side for now)
+  const { data: topGenres, isLoading: isLoadingTopGenres } = useQuery({
+    queryKey: ["topGenres"],
+    queryFn: async () => {
+      // Fetch all movies and aggregate genres based on total purchases (as a proxy for popularity)
+      const { data, error } = await supabase
+        .from("movie_sales_summary")
+        .select("genre, total_purchases");
+      
+      if (error) throw new Error(error.message);
+
+      const genreMap = new Map<string, number>();
+      data.forEach(item => {
+        const genres = item.genre?.split(',').map(g => g.trim()) || [];
+        genres.forEach(g => {
+          if (g) {
+            const currentPurchases = genreMap.get(g) || 0;
+            genreMap.set(g, currentPurchases + item.total_purchases);
+          }
+        });
+      });
+
+      const sortedGenres = Array.from(genreMap.entries())
+        .map(([genre, views]) => ({ genre, views }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 5); // Top 5 genres
+
+      return sortedGenres;
+    },
+  });
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,6 +67,7 @@ const Reports = () => {
         <p className="text-muted-foreground">Analisis performa platform Anda di sini.</p>
       </div>
 
+      {/* Charts (Still using dummy data for now) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RevenueChart />
         <UserGrowthChart />
@@ -46,14 +89,27 @@ const Reports = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topMovies.map((movie) => (
-                  <TableRow key={movie.rank}>
-                    <TableCell>{movie.rank}</TableCell>
-                    <TableCell className="font-medium">{movie.title}</TableCell>
-                    <TableCell>{movie.purchases}</TableCell>
-                    <TableCell>{movie.revenue}</TableCell>
-                  </TableRow>
-                ))}
+                {isLoadingTopMovies ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : topMovies?.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center">Tidak ada data penjualan.</TableCell></TableRow>
+                ) : (
+                  topMovies?.map((movie, index) => (
+                    <TableRow key={movie.title}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-medium">{movie.title}</TableCell>
+                      <TableCell>{movie.total_purchases}</TableCell>
+                      <TableCell>{formatPrice(movie.total_revenue)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -68,17 +124,29 @@ const Reports = () => {
                 <TableRow>
                   <TableHead>Peringkat</TableHead>
                   <TableHead>Genre</TableHead>
-                  <TableHead>Total Penonton</TableHead>
+                  <TableHead>Total Pembelian</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topGenres.map((genre) => (
-                  <TableRow key={genre.rank}>
-                    <TableCell>{genre.rank}</TableCell>
-                    <TableCell className="font-medium">{genre.genre}</TableCell>
-                    <TableCell>{genre.views.toLocaleString("id-ID")}</TableCell>
-                  </TableRow>
-                ))}
+                {isLoadingTopGenres ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : topGenres?.length === 0 ? (
+                  <TableRow><TableCell colSpan={3} className="text-center">Tidak ada data genre.</TableCell></TableRow>
+                ) : (
+                  topGenres?.map((genre, index) => (
+                    <TableRow key={genre.genre}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-medium">{genre.genre}</TableCell>
+                      <TableCell>{genre.views.toLocaleString("id-ID")}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
