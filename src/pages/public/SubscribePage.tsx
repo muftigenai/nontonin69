@@ -31,7 +31,7 @@ const SubscribePage = () => {
   };
 
   const features = [
-    "Akses semua film premium",
+    "Akses semua film langganan",
     "Tonton tanpa iklan",
     "Kualitas video hingga 4K",
     "Dukungan prioritas",
@@ -81,7 +81,7 @@ const SubscribePage = () => {
       <div className="text-center">
         <h1 className="text-4xl font-bold tracking-tight">Pilih Paket Langganan Anda</h1>
         <p className="text-muted-foreground mt-2">
-          Dapatkan akses tak terbatas ke semua film premium kami.
+          Dapatkan akses tak terbatas ke semua film langganan kami.
         </p>
       </div>
       <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
