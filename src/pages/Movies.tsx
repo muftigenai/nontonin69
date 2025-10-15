@@ -19,13 +19,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { MoreHorizontal } from "lucide-react";
 import { Movie } from "@/types";
 
-// Skema baru: poster_file adalah FileList, poster_url dihilangkan dari skema input
+// Skema baru: menggunakan FileList untuk semua media
 const movieSchema = z.object({
   title: z.string().min(1, "Judul tidak boleh kosong"),
   description: z.string().min(1, "Deskripsi tidak boleh kosong"),
-  poster_file: z.instanceof(FileList).optional(), // File upload
-  trailer_url: z.string().url("URL trailer tidak valid"),
-  video_url: z.string().optional(),
+  poster_file: z.instanceof(FileList).optional(),
+  trailer_file: z.instanceof(FileList).optional(),
+  video_file: z.instanceof(FileList).optional(),
   release_date: z.string().min(1, "Tanggal rilis tidak boleh kosong"),
   genre: z.string().min(1, "Genre tidak boleh kosong"),
   duration: z.coerce.number().min(1, "Durasi harus lebih dari 0"),
@@ -37,7 +37,9 @@ const movieSchema = z.object({
 });
 
 type MovieFormValues = z.infer<typeof movieSchema> & {
-  current_poster_url?: string | null; // Untuk menyimpan URL poster saat ini saat edit
+  current_poster_url?: string | null;
+  current_trailer_url?: string | null;
+  current_video_url?: string | null;
 };
 
 const Movies = () => {
@@ -52,9 +54,11 @@ const Movies = () => {
       title: "",
       description: "",
       poster_file: undefined,
+      trailer_file: undefined,
+      video_file: undefined,
       current_poster_url: null,
-      trailer_url: "",
-      video_url: "",
+      current_trailer_url: null,
+      current_video_url: null,
       release_date: "",
       genre: "",
       duration: 0,
@@ -80,31 +84,47 @@ const Movies = () => {
     );
   }, [movies, searchTerm]);
 
+  const uploadFile = async (fileList: FileList | undefined, currentUrl: string | null, folder: string) => {
+    if (fileList && fileList.length > 0) {
+      const file = fileList[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      const filePath = `${folder}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('posters') // Menggunakan bucket 'posters' untuk semua media
+        .upload(filePath, file);
+
+      if (uploadError) throw new Error(`Gagal mengunggah ${folder}: ${uploadError.message}`);
+
+      const { data: urlData } = supabase.storage.from('posters').getPublicUrl(filePath);
+      return urlData.publicUrl;
+    }
+    return currentUrl;
+  };
+
   const mutation = useMutation({
     mutationFn: async (values: MovieFormValues) => {
-      const { poster_file, current_poster_url, ...rest } = values;
-      let posterUrlToSave = current_poster_url;
+      const { poster_file, trailer_file, video_file, current_poster_url, current_trailer_url, current_video_url, ...rest } = values;
 
-      if (poster_file && poster_file.length > 0) {
-        const file = poster_file[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-        const filePath = `posters/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('posters')
-          .upload(filePath, file);
-
-        if (uploadError) throw new Error(`Gagal mengunggah poster: ${uploadError.message}`);
-
-        const { data: urlData } = supabase.storage.from('posters').getPublicUrl(filePath);
-        posterUrlToSave = urlData.publicUrl;
-      } else if (!editingMovie && !posterUrlToSave) {
-        // Jika ini adalah pembuatan baru dan tidak ada file diunggah
+      // 1. Upload Poster
+      const posterUrlToSave = await uploadFile(poster_file, current_poster_url, 'posters');
+      if (!editingMovie && !posterUrlToSave) {
         throw new Error("Poster film harus diunggah.");
       }
 
-      const movieData = { ...rest, poster_url: posterUrlToSave };
+      // 2. Upload Trailer
+      const trailerUrlToSave = await uploadFile(trailer_file, current_trailer_url, 'trailers');
+
+      // 3. Upload Video
+      const videoUrlToSave = await uploadFile(video_file, current_video_url, 'videos');
+
+      const movieData = { 
+        ...rest, 
+        poster_url: posterUrlToSave,
+        trailer_url: trailerUrlToSave,
+        video_url: videoUrlToSave,
+      };
 
       const { error } = editingMovie
         ? await supabase.from("movies").update(movieData).eq("id", editingMovie.id)
@@ -141,7 +161,8 @@ const Movies = () => {
   const handleAdd = () => {
     setEditingMovie(null);
     form.reset({
-      title: "", description: "", poster_file: undefined, current_poster_url: null, trailer_url: "", video_url: "",
+      title: "", description: "", poster_file: undefined, current_poster_url: null, 
+      trailer_file: undefined, current_trailer_url: null, video_file: undefined, current_video_url: null,
       release_date: "", genre: "", duration: 0, price: 0, subtitle_url: "", access_type: "free"
     });
     setIsDialogOpen(true);
@@ -154,10 +175,15 @@ const Movies = () => {
       duration: movie.duration || 0,
       price: movie.price || 0,
       subtitle_url: movie.subtitle_url || "",
-      video_url: movie.video_url || "",
       access_type: movie.access_type || "free",
-      current_poster_url: movie.poster_url, // Simpan URL lama
-      poster_file: undefined, // Reset file input
+      // Set current URLs for preservation if no new file is uploaded
+      current_poster_url: movie.poster_url,
+      current_trailer_url: movie.trailer_url,
+      current_video_url: movie.video_url,
+      // Reset file inputs
+      poster_file: undefined,
+      trailer_file: undefined,
+      video_file: undefined,
     });
     setIsDialogOpen(true);
   };
@@ -175,6 +201,61 @@ const Movies = () => {
   const currentPosterUrl = form.watch("current_poster_url");
   const posterFile = form.watch("poster_file");
   const previewUrl = posterFile && posterFile.length > 0 ? URL.createObjectURL(posterFile[0]) : currentPosterUrl;
+
+  const renderMediaUploadField = (
+    fieldName: "poster_file" | "trailer_file" | "video_file",
+    label: string,
+    accept: string,
+    currentUrlKey: "current_poster_url" | "current_trailer_url" | "current_video_url",
+    previewType: "image" | "video" | "none" = "none"
+  ) => {
+    const currentUrl = form.watch(currentUrlKey);
+    const fileList = form.watch(fieldName);
+    const file = fileList && fileList.length > 0 ? fileList[0] : null;
+    const previewSource = file ? URL.createObjectURL(file) : currentUrl;
+
+    return (
+      <FormField control={form.control} name={fieldName} render={({ field: { value, onChange, ...fieldProps } }) => (
+        <FormItem className="md:col-span-2">
+          <Label>{label}</Label>
+          <div className="flex items-center gap-4">
+            {previewType === "image" && (
+              <div className="aspect-[2/3] w-24 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
+                {previewSource ? (
+                  <img src={previewSource} alt={`${label} Preview`} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                    No Image
+                  </div>
+                )}
+              </div>
+            )}
+            {previewType === "video" && previewSource && (
+              <div className="aspect-video w-48 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
+                <video controls src={previewSource} className="h-full w-full object-cover" />
+              </div>
+            )}
+            <div className="flex-1">
+              <FormControl>
+                <Input
+                  type="file"
+                  accept={accept}
+                  onChange={(e) => {
+                    onChange(e.target.files);
+                  }}
+                  {...fieldProps}
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground mt-1">
+                {editingMovie && currentUrl && !file ? `File saat ini akan dipertahankan.` : `Unggah file ${label.toLowerCase()}.`}
+              </p>
+            </div>
+          </div>
+          <FormMessage />
+        </FormItem>
+      )} />
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -300,56 +381,14 @@ const Movies = () => {
                 </FormItem>
               )} />
               
-              {/* Poster Upload Field */}
-              <FormField control={form.control} name="poster_file" render={({ field: { value, onChange, ...fieldProps } }) => (
-                <FormItem className="md:col-span-2">
-                  <Label>Poster Film</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="aspect-[2/3] w-24 flex-shrink-0 overflow-hidden rounded-md border bg-muted">
-                      {previewUrl ? (
-                        <img src={previewUrl} alt="Poster Preview" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                          No Image
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <FormControl>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            onChange(e.target.files);
-                          }}
-                          {...fieldProps}
-                        />
-                      </FormControl>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {editingMovie && currentPosterUrl && !posterFile ? "Poster saat ini akan dipertahankan jika tidak ada file baru diunggah." : "Unggah file gambar baru."}
-                      </p>
-                    </div>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              {/* Media Upload Fields */}
+              {renderMediaUploadField("poster_file", "Poster Film", "image/*", "current_poster_url", "image")}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="trailer_url" render={({ field }) => (
-                  <FormItem>
-                    <Label>URL Trailer</Label>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="video_url" render={({ field }) => (
-                  <FormItem>
-                    <Label>URL Film</Label>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {renderMediaUploadField("trailer_file", "File Trailer", "video/*", "current_trailer_url", "video")}
+                {renderMediaUploadField("video_file", "File Film Utama", "video/*", "current_video_url", "video")}
               </div>
+
               <FormField control={form.control} name="subtitle_url" render={({ field }) => (
                 <FormItem>
                   <Label>URL Subtitle (Opsional)</Label>
