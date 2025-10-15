@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,15 @@ import { Check, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/providers/AuthProvider";
+import { showSuccess, showError } from "@/utils/toast";
+import { addDays, format } from "date-fns";
 
 const SubscribePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   const { data: settings, isLoading } = useQuery({
     queryKey: ["app_settings"],
     queryFn: async () => {
@@ -23,6 +29,54 @@ const SubscribePage = () => {
 
   const monthlyPrice = settings?.monthly_price ? Number(settings.monthly_price) : 0;
   const annualPrice = settings?.annual_price ? Number(settings.annual_price) : 0;
+
+  const subscriptionMutation = useMutation({
+    mutationFn: async ({ price, period }: { price: number; period: 'monthly' | 'annual' }) => {
+      if (!user) throw new Error("Anda harus login untuk berlangganan.");
+
+      const days = period === 'monthly' ? 30 : 365;
+      const endDate = addDays(new Date(), days).toISOString();
+      const description = `Langganan Premium ${period === 'monthly' ? 'Bulanan' : 'Tahunan'}`;
+
+      // 1. Simulate Transaction
+      const transactionData = {
+        user_id: user.id,
+        description: description,
+        payment_method: "Simulasi Langganan",
+        amount: price,
+        status: "successful",
+      };
+
+      const { error: trxError } = await supabase.from("transactions").insert(transactionData);
+      if (trxError) throw new Error(`Gagal membuat transaksi: ${trxError.message}`);
+
+      // 2. Update Profile
+      // We update both status and end date. Status is kept for backward compatibility/display, 
+      // but access is now controlled by the end date check in useUserProfile.
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ 
+          subscription_status: "premium", 
+          subscription_end_date: endDate 
+        })
+        .eq("id", user.id);
+
+      if (profileError) throw new Error(`Gagal memperbarui profil: ${profileError.message}`);
+    },
+    onSuccess: () => {
+      showSuccess("Langganan Premium berhasil diaktifkan!");
+      queryClient.invalidateQueries({ queryKey: ["userProfile", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      navigate("/account");
+    },
+    onError: (error: Error) => {
+      showError(`Gagal berlangganan: ${error.message}`);
+    },
+  });
+
+  const handleSubscribe = (price: number, period: 'monthly' | 'annual') => {
+    subscriptionMutation.mutate({ price, period });
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -42,7 +96,8 @@ const SubscribePage = () => {
   const renderPlanCard = (
     title: string,
     price: number,
-    period: string,
+    period: 'bulan' | 'tahun',
+    periodKey: 'monthly' | 'annual',
     isPopular: boolean = false
   ) => (
     <Card className={cn("flex flex-col", isPopular && "border-primary")}>
@@ -71,8 +126,12 @@ const SubscribePage = () => {
         </ul>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" disabled={isLoading}>
-          Pilih Paket
+        <Button 
+          className="w-full" 
+          disabled={isLoading || subscriptionMutation.isPending}
+          onClick={() => handleSubscribe(price, periodKey)}
+        >
+          {subscriptionMutation.isPending ? "Memproses..." : "Pilih Paket"}
         </Button>
       </CardFooter>
     </Card>
@@ -94,8 +153,8 @@ const SubscribePage = () => {
         <div className="h-8 w-8 flex-shrink-0" /> {/* Placeholder for alignment */}
       </div>
       <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
-        {renderPlanCard("Bulanan", monthlyPrice, "bulan")}
-        {renderPlanCard("Tahunan", annualPrice, "tahun", true)}
+        {renderPlanCard("Bulanan", monthlyPrice, "bulan", "monthly")}
+        {renderPlanCard("Tahunan", annualPrice, "tahun", "annual", true)}
       </div>
     </div>
   );

@@ -28,7 +28,7 @@ const Transactions = () => {
         amount,
         status,
         user_id,
-        user_details ( email, full_name, subscription_status ),
+        user_details ( email, full_name, subscription_status, subscription_end_date ),
         movies ( title )
       `);
 
@@ -49,10 +49,10 @@ const Transactions = () => {
 
   const cancelSubscriptionMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // 1. Update subscription status to 'free' in profiles table
+      // 1. Update subscription status to 'free' AND clear end date
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ subscription_status: "free" })
+        .update({ subscription_status: "free", subscription_end_date: null })
         .eq("id", userId);
       
       if (profileError) throw new Error(profileError.message);
@@ -82,6 +82,7 @@ const Transactions = () => {
       case "successful":
         return "default";
       case "pending":
+      case "processing": // Added processing status if needed
         return "secondary";
       case "failed":
         return "destructive";
@@ -168,13 +169,16 @@ const Transactions = () => {
               transactions?.map((trx) => {
                 // Check if the transaction description contains "langganan" (case-insensitive)
                 const isSubscriptionTransaction = trx.description?.toLowerCase().includes("langganan");
-                // Check if the user currently has a premium subscription status
-                const isPremiumActive = trx.user_details?.subscription_status === 'premium';
+                
+                // Determine if the user is currently premium based on the end date
+                const endDate = trx.user_details?.subscription_end_date;
+                const isPremiumActive = endDate ? new Date(endDate) > new Date() : false;
+
                 const userName = trx.user_details?.full_name || trx.user_details?.email || "Pengguna";
 
-                // We only show the cancel button if:
+                // Show cancel button if:
                 // 1. It was a successful subscription transaction (or just a successful transaction)
-                // 2. The user currently holds a premium status (to prevent canceling an already free account)
+                // 2. The user currently holds an active premium status (based on end date check)
                 const showCancelButton = isSubscriptionTransaction && isPremiumActive && trx.user_id && trx.status === 'successful';
 
                 return (

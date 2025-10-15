@@ -15,6 +15,8 @@ import EditProfileDialog from "@/components/public/EditProfileDialog";
 import ChangePasswordDialog from "@/components/public/ChangePasswordDialog"; // Import komponen baru
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 const AccountPage = () => {
   const { user } = useAuth();
@@ -111,13 +113,13 @@ const AccountPage = () => {
                 ) : (
                   <>
                     <div className="mt-2 flex items-center gap-2">
-                      <Badge variant={profile?.subscription_status === 'premium' ? 'default' : 'secondary'}>
-                        {profile?.subscription_status === 'premium' ? 'Aktif' : 'Tidak Aktif'}
+                      <Badge variant={profile?.isPremiumActive ? 'default' : 'secondary'}>
+                        {profile?.isPremiumActive ? 'Aktif' : 'Tidak Aktif'}
                       </Badge>
                     </div>
-                    {profile?.subscription_status === 'premium' && (
+                    {profile?.isPremiumActive && profile.subscription_end_date && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        Berakhir pada: 31 Agustus 2024
+                        Berakhir pada: {format(new Date(profile.subscription_end_date), "dd MMMM yyyy", { locale: idLocale })}
                       </p>
                     )}
                   </>
@@ -125,7 +127,7 @@ const AccountPage = () => {
               </div>
               <Button className="w-full" asChild>
                 <Link to="/subscribe">
-                  {profile?.subscription_status === 'premium' ? 'Kelola Langganan' : 'Perpanjang Langganan'}
+                  {profile?.isPremiumActive ? 'Kelola Langganan' : 'Perpanjang Langganan'}
                 </Link>
               </Button>
             </CardContent>

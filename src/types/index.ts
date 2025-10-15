@@ -24,6 +24,7 @@ export type UserDetails = {
   avatar_url: string | null;
   subscription_status: string | null;
   status: string | null;
+  subscription_end_date: string | null;
 };
 
 export type Transaction = {
@@ -38,6 +39,7 @@ export type Transaction = {
     email: string | null;
     full_name: string | null;
     subscription_status: string | null; // Ditambahkan
+    subscription_end_date: string | null; // ADDED
   } | null;
   movies: {
     title: string | null;
@@ -53,4 +55,12 @@ export type Review = {
     full_name: string | null;
     avatar_url: string | null;
   } | null;
+};
+
+export type UserProfile = {
+  id: string;
+  role: "admin" | "user" | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  subscription_end_date: string | null;
 };

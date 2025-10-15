@@ -58,9 +58,9 @@ const WatchMoviePage = () => {
   // Check access rights
   // Akses diberikan jika:
   // 1. Film gratis (free)
-  // 2. Pengguna premium (subscription_status === 'premium')
+  // 2. Pengguna premium (profile?.isPremiumActive === true)
   // 3. Pengguna telah membeli film ini (hasPurchased === true)
-  const hasAccess = movie?.access_type === 'free' || profile?.subscription_status === 'premium' || hasPurchased;
+  const hasAccess = movie?.access_type === 'free' || profile?.isPremiumActive || hasPurchased;
 
   if (isLoading) {
     return (
