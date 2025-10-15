@@ -10,6 +10,7 @@ import MovieCard from "@/components/public/MovieCard";
 import { Separator } from "@/components/ui/separator";
 import ReviewList from "@/components/public/ReviewList";
 import ReviewForm from "@/components/public/ReviewForm";
+import { getYouTubeVideoId, getGoogleDriveFileId } from "@/lib/utils";
 
 const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -51,23 +52,49 @@ const MovieDetailPage = () => {
   };
 
   const renderPlayer = (url: string) => {
-    if (url.includes("youtube.com") || url.includes("youtu.be")) {
-      const videoId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+    const youtubeId = getYouTubeVideoId(url);
+    const driveId = getGoogleDriveFileId(url);
+    
+    // Atribut sandbox yang membatasi navigasi dan pop-up, tetapi mengizinkan skrip dan fullscreen
+    const sandboxAttributes = "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-fullscreen";
+
+    if (driveId) {
       return (
         <div className="aspect-video">
           <iframe
             width="100%"
             height="100%"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="YouTube video player"
+            src={`https://drive.google.com/file/d/${driveId}/preview`}
+            title="Google Drive Trailer"
             frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="autoplay; fullscreen"
             allowFullScreen
+            sandbox={sandboxAttributes}
             className="rounded-lg"
           ></iframe>
         </div>
       );
     }
+
+    if (youtubeId) {
+      return (
+        <div className="aspect-video">
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${youtubeId}`}
+            title="YouTube Trailer"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            sandbox={sandboxAttributes}
+            className="rounded-lg"
+          ></iframe>
+        </div>
+      );
+    }
+    
+    // Fallback for direct video URL
     return (
         <video controls className="w-full aspect-video rounded-lg">
             <source src={url} type="video/mp4" />
