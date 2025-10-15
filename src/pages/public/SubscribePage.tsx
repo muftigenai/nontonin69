@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 const SubscribePage = () => {
+  const navigate = useNavigate();
   const { data: settings, isLoading } = useQuery({
     queryKey: ["app_settings"],
     queryFn: async () => {
@@ -78,11 +80,18 @@ const SubscribePage = () => {
 
   return (
     <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Pilih Paket Langganan Anda</h1>
-        <p className="text-muted-foreground mt-2">
-          Dapatkan akses tak terbatas ke semua film langganan kami.
-        </p>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="sr-only">Kembali</span>
+        </Button>
+        <div className="flex-1 text-center">
+          <h1 className="text-4xl font-bold tracking-tight">Pilih Paket Langganan Anda</h1>
+          <p className="text-muted-foreground mt-2">
+            Dapatkan akses tak terbatas ke semua film langganan kami.
+          </p>
+        </div>
+        <div className="h-8 w-8 flex-shrink-0" /> {/* Placeholder for alignment */}
       </div>
       <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
         {renderPlanCard("Bulanan", monthlyPrice, "bulan")}
