@@ -132,7 +132,6 @@ const WatchMoviePage = () => {
           ></iframe>
         </div>
       );
-    );
     }
     
     // Render custom VideoPlayer for direct video URLs
