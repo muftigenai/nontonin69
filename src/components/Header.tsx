@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/AuthProvider";
 import { Link, NavLink } from "react-router-dom";
-import { Bell, Clapperboard, Home, LineChart, Menu, Receipt, Settings, Users, ExternalLink } from "lucide-react";
+import { Clapperboard, Home, LineChart, Menu, Receipt, Settings, Users, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Separator } from "./ui/separator";
@@ -22,7 +22,6 @@ const navItems = [
   { to: "/admin/transactions", icon: Receipt, label: "Transaksi" },
   { to: "/admin/reports", icon: LineChart, label: "Laporan" },
   { to: "/admin/settings", icon: Settings, label: "Pengaturan" },
-  { to: "/admin/logs", icon: Bell, label: "Notifikasi & Log" },
 ];
 
 const Header = () => {

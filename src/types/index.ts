@@ -44,16 +44,6 @@ export type Transaction = {
   movie_id: string | null; 
 };
 
-export type ActivityLog = {
-  id: string;
-  created_at: string;
-  activity_type: string;
-  description: string;
-  profiles: {
-    full_name: string | null;
-  } | null;
-};
-
 export type Review = {
   id: string;
   created_at: string;
