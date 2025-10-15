@@ -11,10 +11,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/providers/AuthProvider";
-import { Clapperboard, Search, Menu } from "lucide-react";
+import { Clapperboard, Search, Menu, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const publicNavItems = [
   { to: "/", label: "Home" },
@@ -25,6 +26,7 @@ const publicNavItems = [
 
 const PublicNavbar = () => {
   const { user, signOut } = useAuth();
+  const { profile } = useUserProfile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const getInitials = () => user?.email?.[0].toUpperCase() ?? "U";
@@ -66,7 +68,7 @@ const PublicNavbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
+                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email ?? ""} />
                     <AvatarFallback>{getInitials()}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -77,6 +79,14 @@ const PublicNavbar = () => {
                 <DropdownMenuItem asChild>
                   <Link to="/account">My Account</Link>
                 </DropdownMenuItem>
+                {profile?.role === 'admin' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="flex items-center">
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut}>Logout</DropdownMenuItem>
               </DropdownMenuContent>
