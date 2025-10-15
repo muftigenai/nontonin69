@@ -33,15 +33,16 @@ export type Transaction = {
   payment_method: string | null;
   amount: number;
   status: "successful" | "pending" | "failed";
+  user_id: string | null; // Ditambahkan
   user_details: {
     email: string | null;
     full_name: string | null;
+    subscription_status: string | null; // Ditambahkan
   } | null;
   movies: {
     title: string | null;
   } | null;
-  // Tambahkan movie_id untuk memudahkan pengecekan PPV
-  movie_id: string | null; 
+  // movie_id dihapus karena PPV dihapus
 };
 
 export type Review = {

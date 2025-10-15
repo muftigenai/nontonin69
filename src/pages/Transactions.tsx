@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MoreHorizontal, Search, Download } from "lucide-react";
+import { MoreHorizontal, Search, Download, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { showSuccess, showError } from "@/utils/toast";
 
 const Transactions = () => {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -25,7 +27,8 @@ const Transactions = () => {
         payment_method,
         amount,
         status,
-        user_details ( email, full_name ),
+        user_id,
+        user_details ( email, full_name, subscription_status ),
         movies ( title )
       `);
 
@@ -43,6 +46,32 @@ const Transactions = () => {
       return data as Transaction[];
     },
   });
+
+  const cancelSubscriptionMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ subscription_status: "free" })
+        .eq("id", userId);
+      
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      showSuccess("Langganan pengguna berhasil dibatalkan.");
+      // Invalidate transactions and user data
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      showError(`Gagal membatalkan langganan: ${error.message}`);
+    },
+  });
+
+  const handleCancelSubscription = (userId: string, userName: string) => {
+    if (window.confirm(`Apakah Anda yakin ingin membatalkan langganan premium untuk ${userName}?`)) {
+      cancelSubscriptionMutation.mutate(userId);
+    }
+  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -132,34 +161,47 @@ const Transactions = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              transactions?.map((trx) => (
-                <TableRow key={trx.id}>
-                  <TableCell>
-                    <div className="font-medium">{trx.user_details?.full_name || "N/A"}</div>
-                    <div className="text-sm text-muted-foreground">{trx.user_details?.email}</div>
-                  </TableCell>
-                  <TableCell>{trx.description || trx.movies?.title || "N/A"}</TableCell>
-                  <TableCell>{formatPrice(trx.amount)}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(trx.status)}>{trx.status}</Badge>
-                  </TableCell>
-                  <TableCell>{new Date(trx.created_at).toLocaleString("id-ID")}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Buka menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
-                        <DropdownMenuItem>Ubah Status</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              transactions?.map((trx) => {
+                const isSubscription = trx.description?.toLowerCase().includes("langganan");
+                const isPremiumActive = trx.user_details?.subscription_status === 'premium';
+                const userName = trx.user_details?.full_name || trx.user_details?.email || "Pengguna";
+
+                return (
+                  <TableRow key={trx.id}>
+                    <TableCell>
+                      <div className="font-medium">{trx.user_details?.full_name || "N/A"}</div>
+                      <div className="text-sm text-muted-foreground">{trx.user_details?.email}</div>
+                    </TableCell>
+                    <TableCell>{trx.description || trx.movies?.title || "N/A"}</TableCell>
+                    <TableCell>{formatPrice(trx.amount)}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(trx.status)}>{trx.status}</Badge>
+                    </TableCell>
+                    <TableCell>{new Date(trx.created_at).toLocaleString("id-ID")}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Buka menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
+                          {isSubscription && isPremiumActive && trx.user_id && (
+                            <>
+                              <DropdownMenuItem className="text-red-600" onClick={() => handleCancelSubscription(trx.user_id!, userName)}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Batalkan Langganan
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
