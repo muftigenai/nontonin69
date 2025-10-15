@@ -14,6 +14,8 @@ import { getYouTubeVideoId, getGoogleDriveFileId } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { showSuccess, showError } from "@/utils/toast";
+import { useState } from "react";
+import QrisPaymentDialog from "@/components/public/QrisPaymentDialog"; // Import QrisPaymentDialog
 
 const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +23,9 @@ const MovieDetailPage = () => {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const queryClient = useQueryClient();
+
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [currentPayment, setCurrentPayment] = useState<{ price: number; description: string } | null>(null);
 
   // Query untuk mengambil harga PPV default
   const { data: settings } = useQuery({
@@ -109,26 +114,20 @@ const MovieDetailPage = () => {
     enabled: !!movie?.genre,
   });
 
-  const purchaseMutation = useMutation({
-    mutationFn: async () => {
-      if (!user || !movie) {
-        throw new Error("Pengguna atau film tidak ditemukan.");
+  // Mutation yang dipanggil setelah pembayaran QRIS berhasil
+  const ppvTransactionMutation = useMutation({
+    mutationFn: async ({ price, movieId, movieTitle }: { price: number; movieId: string; movieTitle: string }) => {
+      if (!user) {
+        throw new Error("Pengguna tidak ditemukan.");
       }
       
-      const priceToCharge = finalMoviePrice || 0;
-
-      if (priceToCharge < 0) {
-        throw new Error("Harga film tidak valid.");
-      }
-
-      // Simulasi proses pembayaran yang sukses
       const transactionData = {
         user_id: user.id,
-        movie_id: movie.id,
-        description: `Pembelian film: ${movie.title}`,
-        payment_method: "Simulasi PPV",
-        amount: priceToCharge,
-        status: "successful", // Langsung sukses untuk simulasi
+        movie_id: movieId,
+        description: `Pembelian film: ${movieTitle} (PPV)`,
+        payment_method: "QRIS Sandbox",
+        amount: price,
+        status: "successful",
       };
 
       const { error } = await supabase.from("transactions").insert(transactionData);
@@ -136,15 +135,39 @@ const MovieDetailPage = () => {
     },
     onSuccess: () => {
       showSuccess(`Pembelian film ${movie?.title} berhasil! Anda sekarang dapat menontonnya.`);
-      // Invalidate purchase check query
       queryClient.invalidateQueries({ queryKey: ["moviePurchase", id, user?.id] });
-      // Redirect to watch page immediately
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      setIsPaymentDialogOpen(false);
       navigate(`/watch/${id}`);
     },
     onError: (error: Error) => {
       showError(`Gagal melakukan pembelian: ${error.message}`);
+      setIsPaymentDialogOpen(false);
     },
   });
+
+  const handleInitiatePpvPayment = () => {
+    if (!user || !movie || finalMoviePrice === null) {
+        showError("Detail film atau pengguna tidak valid.");
+        return;
+    }
+
+    setCurrentPayment({ 
+        price: finalMoviePrice, 
+        description: `Pembelian Film: ${movie.title}` 
+    });
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    if (currentPayment && movie) {
+        ppvTransactionMutation.mutate({ 
+            price: currentPayment.price, 
+            movieId: movie.id, 
+            movieTitle: movie.title 
+        });
+    }
+  };
 
   const getYear = (dateString: string | null) => {
     if (!dateString) return "N/A";
@@ -212,40 +235,10 @@ const MovieDetailPage = () => {
     );
   };
 
-  if (isLoading || isLoadingPurchaseCheck) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          <Skeleton className="col-span-1 aspect-[2/3] w-full rounded-lg" />
-          <div className="col-span-2 space-y-6">
-            <Skeleton className="h-12 w-3/4" />
-            <Skeleton className="h-6 w-1/4" />
-            <div className="flex space-x-4">
-              <Skeleton className="h-8 w-24" />
-              <Skeleton className="h-8 w-24" />
-              <Skeleton className="h-8 w-24" />
-            </div>
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-12 w-48" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <div className="text-center text-red-500">Gagal memuat detail film: {error.message}</div>;
-  }
-
-  if (!movie) {
-    return <div className="text-center">Film tidak ditemukan.</div>;
-  }
-
   // Determine access status
-  const isPremium = movie.access_type === 'premium';
-  // FIX: Use isPremiumActive from useUserProfile
+  const isPremium = movie?.access_type === 'premium';
   const isSubscribed = profile?.isPremiumActive; 
-  const isFree = movie.access_type === 'free';
+  const isFree = movie?.access_type === 'free';
   const canWatch = isFree || isSubscribed || hasPurchased;
 
   const renderActionButton = () => {
@@ -263,7 +256,7 @@ const MovieDetailPage = () => {
     if (canWatch) {
         return (
             <Button size="lg" className="flex items-center gap-2" asChild>
-                <Link to={`/watch/${movie.id}`}>
+                <Link to={`/watch/${movie?.id}`}>
                     <PlayCircle className="h-6 w-6" />
                     <span>Tonton Sekarang</span>
                 </Link>
@@ -277,9 +270,14 @@ const MovieDetailPage = () => {
         
         return (
             <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="flex items-center gap-2" onClick={() => purchaseMutation.mutate()} disabled={purchaseMutation.isPending}>
+                <Button 
+                    size="lg" 
+                    className="flex items-center gap-2" 
+                    onClick={handleInitiatePpvPayment} 
+                    disabled={ppvTransactionMutation.isPending || isPaymentDialogOpen}
+                >
                     <DollarSign className="h-6 w-6" />
-                    <span>{purchaseMutation.isPending ? "Memproses Pembelian..." : `Beli Film Ini${priceText}`}</span>
+                    <span>{ppvTransactionMutation.isPending ? "Memproses Pembelian..." : `Beli Film Ini${priceText}`}</span>
                 </Button>
                 <Button size="lg" variant="secondary" className="flex items-center gap-2" asChild>
                     <Link to="/subscribe">
@@ -295,102 +293,114 @@ const MovieDetailPage = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          <span>Kembali</span>
-        </Button>
-      </div>
+    <>
+      <div className="space-y-8">
+        <div>
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Kembali</span>
+          </Button>
+        </div>
 
-      <section className="grid grid-cols-1 items-start gap-8 md:grid-cols-3 lg:grid-cols-[1fr,2fr]">
-        <img
-          src={movie.poster_url || "https://placehold.co/400x600?text=No+Image"}
-          alt={movie.title}
-          className="aspect-[2/3] w-full rounded-lg object-cover"
-        />
-        <div className="md:col-span-2">
-          <Badge variant={isPremium ? 'default' : 'secondary'}>
-            {isPremium ? 'Premium' : 'Gratis'}
-          </Badge>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">{movie.title}</h1>
-          
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-4 w-4" />
-              <span>{getYear(movie.release_date)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4" />
-              <span>{movie.duration || "N/A"} menit</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Tag className="h-4 w-4" />
-              <span>{movie.genre || "N/A"}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Star className="h-4 w-4 text-yellow-400" fill="currentColor" />
-              {isLoadingRating ? (
-                <Skeleton className="h-4 w-8" />
-              ) : (
-                <span>{averageRating}</span>
+        <section className="grid grid-cols-1 items-start gap-8 md:grid-cols-3 lg:grid-cols-[1fr,2fr]">
+          <img
+            src={movie?.poster_url || "https://placehold.co/400x600?text=No+Image"}
+            alt={movie?.title}
+            className="aspect-[2/3] w-full rounded-lg object-cover"
+          />
+          <div className="md:col-span-2">
+            <Badge variant={isPremium ? 'default' : 'secondary'}>
+              {isPremium ? 'Premium' : 'Gratis'}
+            </Badge>
+            <h1 className="mt-2 text-4xl font-bold tracking-tight">{movie?.title}</h1>
+            
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" />
+                <span>{getYear(movie?.release_date)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4" />
+                <span>{movie?.duration || "N/A"} menit</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Tag className="h-4 w-4" />
+                <span>{movie?.genre || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Star className="h-4 w-4 text-yellow-400" fill="currentColor" />
+                {isLoadingRating ? (
+                  <Skeleton className="h-4 w-8" />
+                ) : (
+                  <span>{averageRating}</span>
+                )}
+              </div>
+              {isPremium && (
+                  <div className="flex items-center gap-1.5 font-semibold text-primary">
+                      <DollarSign className="h-4 w-4" />
+                      <span>{formatPrice(finalMoviePrice)}</span>
+                  </div>
               )}
             </div>
-            {isPremium && (
-                <div className="flex items-center gap-1.5 font-semibold text-primary">
-                    <DollarSign className="h-4 w-4" />
-                    <span>{formatPrice(finalMoviePrice)}</span>
-                </div>
-            )}
-          </div>
 
-          <p className="mt-6 text-lg leading-relaxed">{movie.description}</p>
+            <p className="mt-6 text-lg leading-relaxed">{movie?.description}</p>
 
-          <div className="mt-8">
-            {renderActionButton()}
-            {isPremium && !canWatch && user && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                    Atau, tonton gratis dengan berlangganan paket premium.
-                </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {movie.trailer_url && (
-        <section>
-          <h2 className="text-3xl font-bold">Trailer</h2>
-          <Separator className="my-4" />
-          {renderPlayer(movie.trailer_url)}
-        </section>
-      )}
-
-      <section>
-        <h2 className="text-3xl font-bold">Ulasan Penonton</h2>
-        <Separator className="my-4" />
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="order-2 space-y-4 md:order-1">
-            <ReviewList movieId={movie.id} />
-          </div>
-          <div className="order-1 md:order-2">
-            <ReviewForm movieId={movie.id} />
-          </div>
-        </div>
-      </section>
-
-      {similarMovies && similarMovies.length > 0 && (
-        <section>
-          <h2 className="text-3xl font-bold">Rekomendasi Film Serupa</h2>
-          <Separator className="my-4" />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {isLoadingSimilar 
-              ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="aspect-[2/3] w-full" />)
-              : similarMovies.map(m => <MovieCard key={m.id} movie={m} />)
-            }
+            <div className="mt-8">
+              {renderActionButton()}
+              {isPremium && !canWatch && user && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                      Atau, tonton gratis dengan berlangganan paket premium.
+                  </p>
+              )}
+            </div>
           </div>
         </section>
+
+        {movie?.trailer_url && (
+          <section>
+            <h2 className="text-3xl font-bold">Trailer</h2>
+            <Separator className="my-4" />
+            {renderPlayer(movie.trailer_url)}
+          </section>
+        )}
+
+        <section>
+          <h2 className="text-3xl font-bold">Ulasan Penonton</h2>
+          <Separator className="my-4" />
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            <div className="order-2 space-y-4 md:order-1">
+              <ReviewList movieId={movie?.id || ""} />
+            </div>
+            <div className="order-1 md:order-2">
+              <ReviewForm movieId={movie?.id || ""} />
+            </div>
+          </div>
+        </section>
+
+        {similarMovies && similarMovies.length > 0 && (
+          <section>
+            <h2 className="text-3xl font-bold">Rekomendasi Film Serupa</h2>
+            <Separator className="my-4" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {isLoadingSimilar 
+                ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="aspect-[2/3] w-full" />)
+                : similarMovies.map(m => <MovieCard key={m.id} movie={m} />)
+              }
+            </div>
+          </section>
+        )}
+      </div>
+      
+      {currentPayment && (
+        <QrisPaymentDialog
+          open={isPaymentDialogOpen}
+          onOpenChange={setIsPaymentDialogOpen}
+          onPaymentSuccess={handlePaymentSuccess}
+          amount={currentPayment.price}
+          description={currentPayment.description}
+        />
       )}
-    </div>
+    </>
   );
 };
 
