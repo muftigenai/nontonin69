@@ -21,16 +21,25 @@ const generalSettingsSchema = z.object({
 const subscriptionSettingsSchema = z.object({
   monthlyPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
   annualPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
-  ppvPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"), // New field
+  ppvPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
+});
+
+const paymentSettingsSchema = z.object({
+  qris_file: z.instanceof(FileList).optional(),
 });
 
 type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema> & {
   current_logo_url?: string | null;
 };
 
+type PaymentSettingsFormValues = z.infer<typeof paymentSettingsSchema> & {
+  current_qris_url?: string | null;
+};
+
 const Settings = () => {
   const queryClient = useQueryClient();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [qrisPreview, setQrisPreview] = useState<string | null>(null);
 
   const generalForm = useForm<GeneralSettingsFormValues>({
     resolver: zodResolver(generalSettingsSchema),
@@ -39,7 +48,12 @@ const Settings = () => {
 
   const subscriptionForm = useForm<z.infer<typeof subscriptionSettingsSchema>>({
     resolver: zodResolver(subscriptionSettingsSchema),
-    defaultValues: { monthlyPrice: 0, annualPrice: 0, ppvPrice: 0 }, // Default value for PPV
+    defaultValues: { monthlyPrice: 0, annualPrice: 0, ppvPrice: 0 },
+  });
+
+  const paymentForm = useForm<PaymentSettingsFormValues>({
+    resolver: zodResolver(paymentSettingsSchema),
+    defaultValues: { current_qris_url: null },
   });
 
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
@@ -61,24 +75,25 @@ const Settings = () => {
       setLogoPreview(settings.app_logo_url || null);
       subscriptionForm.setValue("monthlyPrice", Number(settings.monthly_price) || 0);
       subscriptionForm.setValue("annualPrice", Number(settings.annual_price) || 0);
-      subscriptionForm.setValue("ppvPrice", Number(settings.ppv_price) || 0); // Set PPV price
+      subscriptionForm.setValue("ppvPrice", Number(settings.ppv_price) || 0);
+      paymentForm.setValue("current_qris_url", settings.qris_image_url || null);
+      setQrisPreview(settings.qris_image_url || null);
     }
-  }, [settings, generalForm, subscriptionForm]);
+  }, [settings, generalForm, subscriptionForm, paymentForm]);
 
-  const uploadLogo = async (fileList: FileList | undefined) => {
+  const uploadFile = async (fileList: FileList | undefined, path: string, bucket: string) => {
     if (fileList && fileList.length > 0) {
       const file = fileList[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `logo/app_logo.${fileExt}`; // Use a fixed name for the main logo
+      const filePath = `${path}.${fileExt}`;
 
-      // Upload file, replacing existing one (upsert: true)
       const { error: uploadError } = await supabase.storage
-        .from('app_assets')
+        .from(bucket)
         .upload(filePath, file, { upsert: true });
 
-      if (uploadError) throw new Error(`Gagal mengunggah logo: ${uploadError.message}`);
+      if (uploadError) throw new Error(`Gagal mengunggah file: ${uploadError.message}`);
 
-      const { data: urlData } = supabase.storage.from('app_assets').getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
       return urlData.publicUrl;
     }
     return null;
@@ -90,65 +105,57 @@ const Settings = () => {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      showSuccess("Pengaturan berhasil disimpan.");
       queryClient.invalidateQueries({ queryKey: ["app_settings"] });
     },
     onError: (error) => showError(`Gagal menyimpan: ${error.message}`),
   });
 
-  const updateSubscriptionMutation = useMutation({
-    mutationFn: async (values: z.infer<typeof subscriptionSettingsSchema>) => {
-      const updates = [
-        supabase.rpc('update_setting', { p_key: 'monthly_price', p_value: String(values.monthlyPrice) }),
-        supabase.rpc('update_setting', { p_key: 'annual_price', p_value: String(values.annualPrice) }),
-        supabase.rpc('update_setting', { p_key: 'ppv_price', p_value: String(values.ppvPrice) }), // Save PPV price
-      ];
-      const results = await Promise.all(updates);
-      results.forEach(({ error }) => {
-        if (error) throw new Error(`Gagal memperbarui harga: ${error.message}`);
-      });
-    },
-    onSuccess: () => {
-      showSuccess("Harga langganan berhasil disimpan.");
-      queryClient.invalidateQueries({ queryKey: ["app_settings"] });
-    },
-    onError: (error: Error) => showError(error.message),
-  });
-
   const onGeneralSubmit = async (values: GeneralSettingsFormValues) => {
     try {
-      const logoUrl = await uploadLogo(values.logo_file);
-      
-      const updates = [
-        updateSettingMutation.mutateAsync({ key: "app_name", value: values.appName }),
-      ];
-
+      const logoUrl = await uploadFile(values.logo_file, 'logo/app_logo', 'app_assets');
+      await updateSettingMutation.mutateAsync({ key: "app_name", value: values.appName });
       if (logoUrl) {
-        updates.push(updateSettingMutation.mutateAsync({ key: "app_logo_url", value: logoUrl }));
-      } else if (values.logo_file && values.logo_file.length === 0 && values.current_logo_url) {
-        // If user clears the file input but there was a current URL, we keep the current URL.
-        // If we wanted to allow deletion, we'd need a separate delete button/logic.
+        await updateSettingMutation.mutateAsync({ key: "app_logo_url", value: logoUrl });
       }
-
-      await Promise.all(updates);
       showSuccess("Pengaturan umum berhasil diperbarui.");
-      queryClient.invalidateQueries({ queryKey: ["app_settings"] });
     } catch (error: any) {
       showError(error.message);
     }
   };
 
-  const onSubscriptionSubmit = (values: z.infer<typeof subscriptionSettingsSchema>) => {
-    updateSubscriptionMutation.mutate(values);
+  const onSubscriptionSubmit = async (values: z.infer<typeof subscriptionSettingsSchema>) => {
+    try {
+      await Promise.all([
+        updateSettingMutation.mutateAsync({ p_key: 'monthly_price', p_value: String(values.monthlyPrice) }),
+        updateSettingMutation.mutateAsync({ p_key: 'annual_price', p_value: String(values.annualPrice) }),
+        updateSettingMutation.mutateAsync({ p_key: 'ppv_price', p_value: String(values.ppvPrice) }),
+      ]);
+      showSuccess("Harga langganan berhasil disimpan.");
+    } catch (error: any) {
+      showError(error.message);
+    }
   };
 
-  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onPaymentSubmit = async (values: PaymentSettingsFormValues) => {
+    try {
+      const qrisUrl = await uploadFile(values.qris_file, 'qris/payment_qris', 'app_assets');
+      if (qrisUrl) {
+        await updateSettingMutation.mutateAsync({ key: "qris_image_url", value: qrisUrl });
+        showSuccess("Gambar QRIS berhasil diperbarui.");
+      } else {
+        showError("Pilih file gambar QRIS untuk diunggah.");
+      }
+    } catch (error: any) {
+      showError(error.message);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, setPreview: React.Dispatch<React.SetStateAction<string | null>>, currentUrl: string | null) => {
     const file = event.target.files?.[0];
     if (file) {
-      setLogoPreview(URL.createObjectURL(file));
+      setPreview(URL.createObjectURL(file));
     } else {
-      // Revert to current URL if file input is cleared
-      setLogoPreview(generalForm.getValues("current_logo_url") || null);
+      setPreview(currentUrl);
     }
   };
 
@@ -173,62 +180,24 @@ const Settings = () => {
                   <CardDescription>Ubah nama dan logo aplikasi Anda di sini.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <FormField
-                    control={generalForm.control}
-                    name="appName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <Label htmlFor="appName">Nama Aplikasi</Label>
-                        <FormControl>
-                          <Input id="appName" {...field} disabled={isLoadingSettings} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={generalForm.control}
-                    name="logo_file"
-                    render={({ field: { value, onChange, ...fieldProps } }) => (
-                      <FormItem>
-                        <Label htmlFor="logo">Logo Aplikasi</Label>
-                        <div className="flex items-center gap-4">
-                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
-                            {logoPreview ? (
-                              <img src={logoPreview} alt="Logo Preview" className="h-full w-full object-contain p-1" />
-                            ) : (
-                              <Image className="h-8 w-8 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <FormControl>
-                              <Input
-                                id="logo"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                  onChange(e.target.files);
-                                  handleLogoFileChange(e);
-                                }}
-                                {...fieldProps}
-                                disabled={isLoadingSettings}
-                              />
-                            </FormControl>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Unggah file gambar baru untuk logo.
-                            </p>
-                          </div>
+                  <FormField control={generalForm.control} name="appName" render={({ field }) => (<FormItem><Label>Nama Aplikasi</Label><FormControl><Input {...field} disabled={isLoadingSettings} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={generalForm.control} name="logo_file" render={({ field: { onChange, ...fieldProps } }) => (
+                    <FormItem>
+                      <Label>Logo Aplikasi</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
+                          {logoPreview ? <img src={logoPreview} alt="Logo Preview" className="h-full w-full object-contain p-1" /> : <Image className="h-8 w-8 text-muted-foreground" />}
                         </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                        <div className="flex-1">
+                          <FormControl><Input type="file" accept="image/*" onChange={(e) => { onChange(e.target.files); handleFileChange(e, setLogoPreview, generalForm.getValues("current_logo_url")); }} {...fieldProps} disabled={isLoadingSettings} /></FormControl>
+                          <p className="text-sm text-muted-foreground mt-1">Unggah file gambar baru untuk logo.</p>
+                        </div>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </CardContent>
-                <CardFooter>
-                  <Button type="submit" disabled={updateSettingMutation.isPending}>
-                    {updateSettingMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}
-                  </Button>
-                </CardFooter>
+                <CardFooter><Button type="submit" disabled={updateSettingMutation.isPending}>{updateSettingMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}</Button></CardFooter>
               </form>
             </Form>
           </Card>
@@ -237,75 +206,45 @@ const Settings = () => {
           <Card>
             <Form {...subscriptionForm}>
               <form onSubmit={subscriptionForm.handleSubmit(onSubscriptionSubmit)}>
-                <CardHeader>
-                  <CardTitle>Pengaturan Langganan & PPV</CardTitle>
-                  <CardDescription>Atur harga untuk paket langganan premium dan harga default Pay Per View (PPV).</CardDescription>
-                </CardHeader>
+                <CardHeader><CardTitle>Pengaturan Langganan & PPV</CardTitle><CardDescription>Atur harga untuk paket langganan premium dan harga default Pay Per View (PPV).</CardDescription></CardHeader>
                 <CardContent className="space-y-4">
-                  <FormField
-                    control={subscriptionForm.control}
-                    name="monthlyPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <Label>Harga Bulanan (Rp)</Label>
-                        <FormControl>
-                          <Input type="number" {...field} disabled={isLoadingSettings} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={subscriptionForm.control}
-                    name="annualPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <Label>Harga Tahunan (Rp)</Label>
-                        <FormControl>
-                          <Input type="number" {...field} disabled={isLoadingSettings} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={subscriptionForm.control}
-                    name="ppvPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <Label>Harga Default Pay Per View (Rp)</Label>
-                        <FormControl>
-                          <Input type="number" {...field} disabled={isLoadingSettings} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={subscriptionForm.control} name="monthlyPrice" render={({ field }) => (<FormItem><Label>Harga Bulanan (Rp)</Label><FormControl><Input type="number" {...field} disabled={isLoadingSettings} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={subscriptionForm.control} name="annualPrice" render={({ field }) => (<FormItem><Label>Harga Tahunan (Rp)</Label><FormControl><Input type="number" {...field} disabled={isLoadingSettings} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={subscriptionForm.control} name="ppvPrice" render={({ field }) => (<FormItem><Label>Harga Default Pay Per View (Rp)</Label><FormControl><Input type="number" {...field} disabled={isLoadingSettings} /></FormControl><FormMessage /></FormItem>)} />
                 </CardContent>
-                <CardFooter>
-                  <Button type="submit" disabled={updateSubscriptionMutation.isPending}>
-                    {updateSubscriptionMutation.isPending ? "Menyimpan..." : "Simpan Harga"}
-                  </Button>
-                </CardFooter>
+                <CardFooter><Button type="submit" disabled={updateSettingMutation.isPending}>{updateSettingMutation.isPending ? "Menyimpan..." : "Simpan Harga"}</Button></CardFooter>
               </form>
             </Form>
           </Card>
         </TabsContent>
         <TabsContent value="payment">
           <Card>
-            <CardHeader>
-              <CardTitle>Gateway Pembayaran</CardTitle>
-              <CardDescription>Konfigurasi kunci API untuk integrasi pembayaran.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key</Label>
-                <Input id="apiKey" type="password" placeholder="••••••••••••••••••••" />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button disabled>Simpan Konfigurasi</Button>
-            </CardFooter>
+            <Form {...paymentForm}>
+              <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)}>
+                <CardHeader>
+                  <CardTitle>Gateway Pembayaran</CardTitle>
+                  <CardDescription>Unggah gambar QRIS yang akan ditampilkan kepada pengguna saat melakukan pembayaran.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField control={paymentForm.control} name="qris_file" render={({ field: { onChange, ...fieldProps } }) => (
+                    <FormItem>
+                      <Label>Gambar QRIS</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="h-32 w-32 flex-shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
+                          {qrisPreview ? <img src={qrisPreview} alt="QRIS Preview" className="h-full w-full object-contain p-1" /> : <Image className="h-12 w-12 text-muted-foreground" />}
+                        </div>
+                        <div className="flex-1">
+                          <FormControl><Input type="file" accept="image/*" onChange={(e) => { onChange(e.target.files); handleFileChange(e, setQrisPreview, paymentForm.getValues("current_qris_url")); }} {...fieldProps} disabled={isLoadingSettings} /></FormControl>
+                          <p className="text-sm text-muted-foreground mt-1">Unggah gambar QRIS statis Anda di sini.</p>
+                        </div>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </CardContent>
+                <CardFooter><Button type="submit" disabled={updateSettingMutation.isPending}>{updateSettingMutation.isPending ? "Menyimpan..." : "Simpan Gambar QRIS"}</Button></CardFooter>
+              </form>
+            </Form>
           </Card>
         </TabsContent>
       </Tabs>

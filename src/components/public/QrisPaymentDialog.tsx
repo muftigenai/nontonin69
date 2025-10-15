@@ -3,6 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "../ui/skeleton";
 
 interface QrisPaymentDialogProps {
   open: boolean;
@@ -12,28 +15,38 @@ interface QrisPaymentDialogProps {
   description: string;
 }
 
-// QRIS Dummy SVG Data URL
-const QRIS_DUMMY_SVG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjAgMjBoMTYwdjE2MEgyMFoiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzIyMjIiIHN0cm9rZS13aWR0aD0iOCIvPjxyZWN0IHg9IjMwIiB5PSIzMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjEzMCIgeT0iMzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIzMCIgeT0iMTMwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTMwIiB5PSIxMzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iNzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI1MCIgeT0iNTAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIxNTAiIHk9IjUwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iNTAiIHk9IjE1MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjE1MCIgeT0iMTUwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTAwIiB5PSIxMDAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTAwIiB5PSI4MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjEyMCIgeT0iODAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjEyMCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE0MCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE0MCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjEwMCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjEyMCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE0MCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iODAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iMTYwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTAwIiB5PSIxNjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIxMjAiIHk9IjE2MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjE0MCIgeT0iMTYwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTYwIiB5PSIxNjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIyMCIgeT0iODAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIyMCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMjAiIHk9IjEyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjIwIiB5PSIxNDAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIyMCIgeT0iMTYwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjQwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjYwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjgwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjEwMCIgeT0iMjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIxMjAiIHk9IjIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTQwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjE2MCIgeT0iMjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48L3N2Zz4=";
-
 const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, description }: QrisPaymentDialogProps) => {
   const [status, setStatus] = useState<'pending' | 'successful' | 'failed'>('pending');
   const [countdown, setCountdown] = useState(10);
 
+  const { data: qrisImageUrl, isLoading: isLoadingQris } = useQuery({
+    queryKey: ["app_settings_qris"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "qris_image_url")
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // Ignore error if row not found
+        throw new Error(error.message);
+      }
+      return data?.value || null;
+    },
+  });
+
   useEffect(() => {
     if (!open) {
-      // Reset state when dialog closes
       setStatus('pending');
       setCountdown(10);
       return;
     }
 
-    // Start countdown only if status is pending
     if (status === 'pending') {
       const timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            // Simulate successful payment after countdown
             setStatus('successful');
             onPaymentSuccess();
             return 0;
@@ -97,13 +110,18 @@ const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, descr
             <p className="text-sm text-muted-foreground mt-1">{description}</p>
           </div>
 
-          {/* Dummy QR Code using Data URL */}
-          <div className={cn("aspect-square w-48 rounded-lg border-4 border-primary p-2 bg-white", status === 'successful' && 'opacity-50')}>
-            <img 
-              src={QRIS_DUMMY_SVG} 
-              alt="QRIS Code" 
-              className="h-full w-full object-contain"
-            />
+          <div className={cn("aspect-square w-48 rounded-lg border-4 border-primary p-2 bg-white flex items-center justify-center", status === 'successful' && 'opacity-50')}>
+            {isLoadingQris ? (
+              <Skeleton className="h-full w-full" />
+            ) : qrisImageUrl ? (
+              <img 
+                src={qrisImageUrl} 
+                alt="QRIS Code" 
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <p className="text-xs text-center text-muted-foreground">Kode QRIS tidak tersedia. Hubungi admin.</p>
+            )}
           </div>
 
           {renderStatus()}
@@ -113,11 +131,9 @@ const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, descr
           <Button 
             onClick={() => onOpenChange(false)} 
             variant={status === 'successful' ? 'default' : 'outline'}
-            // Tombol Batal harus selalu aktif kecuali saat mutasi sedang berjalan (di SubscribePage)
-            // Di sini, kita hanya menonaktifkannya jika status sudah sukses, agar pengguna diarahkan ke akun.
             disabled={status === 'successful'}
           >
-            {status === 'successful' ? 'Lanjut ke Akun' : 'Batal'}
+            {status === 'successful' ? 'Lanjut' : 'Batal'}
           </Button>
         </div>
       </DialogContent>
