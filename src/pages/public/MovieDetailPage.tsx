@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Calendar, Tag, Star, PlayCircle, Ticket, ArrowLeft } from "lucide-react";
 import MovieCard from "@/components/public/MovieCard";
 import { Separator } from "@/components/ui/separator";
+import ReviewList from "@/components/public/ReviewList";
+import ReviewForm from "@/components/public/ReviewForm";
 
 const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -172,8 +174,13 @@ const MovieDetailPage = () => {
       <section>
         <h2 className="text-3xl font-bold">Ulasan Penonton</h2>
         <Separator className="my-4" />
-        <div className="rounded-lg border bg-muted p-8 text-center">
-          <p className="text-muted-foreground">Fitur ulasan akan segera hadir!</p>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="order-2 space-y-4 md:order-1">
+            <ReviewList movieId={movie.id} />
+          </div>
+          <div className="order-1 md:order-2">
+            <ReviewForm movieId={movie.id} />
+          </div>
         </div>
       </section>
 
