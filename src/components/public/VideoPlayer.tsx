@@ -27,7 +27,18 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
   const [showControls, setShowControls] = useState(true);
   const [isSubtitleEnabled, setIsSubtitleEnabled] = useState(true);
 
-  // --- Database Interaction ---
+  // --- Video Controls Logic ---
+
+  const togglePlay = useCallback(() => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  }, [isPlaying]);
 
   // 1. Load initial watch progress
   useEffect(() => {
@@ -90,18 +101,27 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     };
   }, [isPlaying, user, saveProgress]);
 
-  // --- Video Controls Logic ---
-
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
+  // 3. Keyboard Controls (Spacebar for Play/Pause)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if the key pressed is the spacebar and no input field is focused
+      if (event.code === 'Space' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        // Prevent default action (scrolling)
+        event.preventDefault();
+        
+        // Only toggle play if the video player container is visible/in focus area
+        if (containerRef.current && containerRef.current.contains(document.activeElement) || containerRef.current) {
+            togglePlay();
+        }
       }
-      setIsPlaying(!isPlaying);
-    }
-  };
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePlay]);
+
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -193,6 +213,7 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
       onContextMenu={handleContextMenu}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
+      tabIndex={0} // Make the container focusable
     >
       {/* Video Element */}
       <video
