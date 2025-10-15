@@ -56,7 +56,7 @@ const Settings = () => {
 
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
-      const { error } = await supabase.from("app_settings").update({ value }).eq("key", key);
+      const { error } = await supabase.rpc('update_setting', { p_key: key, p_value: value });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -69,8 +69,8 @@ const Settings = () => {
   const updateSubscriptionMutation = useMutation({
     mutationFn: async (values: z.infer<typeof subscriptionSettingsSchema>) => {
       const updates = [
-        supabase.from("app_settings").update({ value: String(values.monthlyPrice) }).eq("key", "monthly_price"),
-        supabase.from("app_settings").update({ value: String(values.annualPrice) }).eq("key", "annual_price"),
+        supabase.rpc('update_setting', { p_key: 'monthly_price', p_value: String(values.monthlyPrice) }),
+        supabase.rpc('update_setting', { p_key: 'annual_price', p_value: String(values.annualPrice) }),
       ];
       const results = await Promise.all(updates);
       results.forEach(({ error }) => {
