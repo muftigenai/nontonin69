@@ -12,11 +12,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Transaction } from "@/types";
 import { useState } from "react";
 import EditProfileDialog from "@/components/public/EditProfileDialog";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 const AccountPage = () => {
   const { user } = useAuth();
   const { profile, isLoading: isLoadingProfile } = useUserProfile();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
     queryKey: ["user_transactions", user?.id],
@@ -55,9 +58,15 @@ const AccountPage = () => {
   return (
     <>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Akun Saya</h1>
-          <p className="text-muted-foreground">Kelola informasi profil dan langganan Anda.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
+            <span className="sr-only">Kembali</span>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Akun Saya</h1>
+            <p className="text-muted-foreground">Kelola informasi profil dan langganan Anda.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
