@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Movie } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import GenreSection from "@/components/public/GenreSection";
+import { useAuth } from "@/providers/AuthProvider";
 import {
   Flame,
   Swords,
@@ -14,6 +15,7 @@ import {
   Globe,
   Users,
   Sparkles,
+  Clock,
 } from "lucide-react";
 
 const genres = [
@@ -30,7 +32,9 @@ const genres = [
 ];
 
 const PublicHomePage = () => {
-  const { data: movies, isLoading, error } = useQuery({
+  const { user } = useAuth();
+
+  const { data: movies, isLoading: isLoadingMovies, error } = useQuery({
     queryKey: ["public_movies"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -41,6 +45,23 @@ const PublicHomePage = () => {
       if (error) throw new Error(error.message);
       return data as Movie[];
     },
+  });
+
+  const { data: watchHistory, isLoading: isLoadingWatchHistory } = useQuery({
+    queryKey: ["watch_history", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("watch_history")
+        .select("movies(*)")
+        .eq("user_id", user.id)
+        .order("watched_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw new Error(error.message);
+      return data.map((item: any) => item.movies).filter(Boolean) as Movie[];
+    },
+    enabled: !!user,
   });
 
   const getMoviesByGenre = (genreKey: string) => {
@@ -77,20 +98,33 @@ const PublicHomePage = () => {
       </div>
 
       {error && <p className="text-red-500">Gagal memuat film: {error.message}</p>}
-      {isLoading && renderSkeletons()}
+      {isLoadingMovies && renderSkeletons()}
 
-      {!isLoading &&
-        genres.map((genre) => (
-          <GenreSection
-            key={genre.key}
-            title={genre.name}
-            icon={genre.icon}
-            movies={getMoviesByGenre(genre.key)}
-            genreKey={genre.key}
-          />
-        ))}
+      {!isLoadingMovies && (
+        <>
+          {user && !isLoadingWatchHistory && watchHistory && watchHistory.length > 0 && (
+            <GenreSection
+              key="recently-watched"
+              title="Baru Saja Ditonton"
+              icon={Clock}
+              movies={watchHistory}
+              genreKey="recently-watched"
+            />
+          )}
+
+          {genres.map((genre) => (
+            <GenreSection
+              key={genre.key}
+              title={genre.name}
+              icon={genre.icon}
+              movies={getMoviesByGenre(genre.key)}
+              genreKey={genre.key}
+            />
+          ))}
+        </>
+      )}
       
-      {movies?.length === 0 && !isLoading && (
+      {movies?.length === 0 && !isLoadingMovies && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">Belum ada film yang tersedia.</p>
         </div>
