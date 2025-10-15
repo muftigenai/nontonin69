@@ -1,12 +1,15 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Movie } from "@/types";
 import MovieCard from "@/components/public/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const query = searchParams.get("q");
 
   const { data: movies, isLoading, error } = useQuery({
@@ -26,9 +29,13 @@ const SearchResultsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">
-          Hasil Pencarian untuk: <span className="text-primary">"{query}"</span>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="sr-only">Kembali</span>
+        </Button>
+        <h1 className="text-2xl md:text-3xl font-bold truncate">
+          Hasil Pencarian: <span className="text-primary">"{query}"</span>
         </h1>
       </div>
 
