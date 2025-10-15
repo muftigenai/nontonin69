@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/providers/AuthProvider";
-import { Clapperboard, Search, Menu, ShieldCheck } from "lucide-react";
+import { Search, Menu, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import AppIcon from "../AppIcon";
 
 const publicNavItems = [
   { to: "/", label: "Home" },
@@ -55,7 +56,7 @@ const PublicNavbar = () => {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <Clapperboard className="h-7 w-7 text-primary" />
+            <AppIcon className="h-7 w-7" />
             <span className="text-xl font-bold">Nontonin</span>
           </Link>
           <nav className="hidden items-center gap-4 md:flex">

@@ -1,10 +1,11 @@
 import { NavLink, Link } from "react-router-dom";
-import { Clapperboard, Home, LineChart, Receipt, Settings, Users, ExternalLink } from "lucide-react";
+import { Home, LineChart, Receipt, Settings, Users, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import AppIcon from "./AppIcon";
 
 const navItems = [
   { to: "/admin", icon: Home, label: "Dashboard" },
-  { to: "/admin/movies", icon: Clapperboard, label: "Film" },
+  { to: "/admin/movies", icon: AppIcon, label: "Film" }, // Menggunakan AppIcon sebagai ikon untuk Film
   { to: "/admin/users", icon: Users, label: "Pengguna" },
   { to: "/admin/transactions", icon: Receipt, label: "Transaksi" },
   { to: "/admin/reports", icon: LineChart, label: "Laporan" },
@@ -16,7 +17,7 @@ const Sidebar = () => {
     <aside className="hidden h-screen w-64 flex-col border-r bg-background p-4 sm:flex">
       <div className="flex flex-1 flex-col">
         <div className="mb-8 flex items-center gap-2">
-          <Clapperboard className="h-8 w-8 text-primary" />
+          <AppIcon className="h-8 w-8" />
           <h1 className="text-2xl font-bold">Nontonin</h1>
         </div>
         <nav className="flex flex-col gap-2">
@@ -32,7 +33,11 @@ const Sidebar = () => {
                 )
               }
             >
-              <item.icon className="h-5 w-5" />
+              {item.icon === AppIcon ? (
+                <AppIcon className="h-5 w-5" />
+              ) : (
+                <item.icon className="h-5 w-5" />
+              )}
               <span>{item.label}</span>
             </NavLink>
           ))}

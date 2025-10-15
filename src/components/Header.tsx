@@ -10,14 +10,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/AuthProvider";
 import { Link, NavLink } from "react-router-dom";
-import { Clapperboard, Home, LineChart, Menu, Receipt, Settings, Users, ExternalLink } from "lucide-react";
+import { Home, LineChart, Menu, Receipt, Settings, Users, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Separator } from "./ui/separator";
+import AppIcon from "./AppIcon";
 
 const navItems = [
   { to: "/admin", icon: Home, label: "Dashboard" },
-  { to: "/admin/movies", icon: Clapperboard, label: "Film" },
+  { to: "/admin/movies", icon: AppIcon, label: "Film" },
   { to: "/admin/users", icon: Users, label: "Pengguna" },
   { to: "/admin/transactions", icon: Receipt, label: "Transaksi" },
   { to: "/admin/reports", icon: LineChart, label: "Laporan" },
@@ -48,7 +49,7 @@ const Header = () => {
           <SheetContent side="left" className="flex flex-col pt-12">
             <nav className="grid gap-4">
               <Link to="/admin" className="group mb-4 flex items-center gap-2 text-lg font-semibold">
-                <Clapperboard className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
+                <AppIcon className="h-8 w-8" />
                 <span className="font-bold">Nontonin</span>
               </Link>
               {navItems.map((item) => (
@@ -63,7 +64,11 @@ const Header = () => {
                     )
                   }
                 >
-                  <item.icon className="h-5 w-5" />
+                  {item.icon === AppIcon ? (
+                    <AppIcon className="h-5 w-5" />
+                  ) : (
+                    <item.icon className="h-5 w-5" />
+                  )}
                   {item.label}
                 </NavLink>
               ))}
