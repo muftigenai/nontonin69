@@ -29,7 +29,16 @@ const PublicNavbar = () => {
   const { profile } = useUserProfile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const getInitials = () => user?.email?.[0].toUpperCase() ?? "U";
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase();
+    }
+    return user?.email?.[0].toUpperCase() ?? "U";
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -68,13 +77,13 @@ const PublicNavbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email ?? ""} />
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || ""} />
                     <AvatarFallback>{getInitials()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                <DropdownMenuLabel>{profile?.full_name || user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/account">My Account</Link>
