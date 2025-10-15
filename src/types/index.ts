@@ -40,6 +40,8 @@ export type Transaction = {
   movies: {
     title: string | null;
   } | null;
+  // Tambahkan movie_id untuk memudahkan pengecekan PPV
+  movie_id: string | null; 
 };
 
 export type ActivityLog = {

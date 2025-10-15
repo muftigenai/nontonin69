@@ -1,20 +1,26 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Movie } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Calendar, Tag, Star, PlayCircle, Ticket, ArrowLeft } from "lucide-react";
+import { Clock, Calendar, Tag, Star, PlayCircle, Ticket, ArrowLeft, DollarSign } from "lucide-react";
 import MovieCard from "@/components/public/MovieCard";
 import { Separator } from "@/components/ui/separator";
 import ReviewList from "@/components/public/ReviewList";
 import ReviewForm from "@/components/public/ReviewForm";
 import { getYouTubeVideoId, getGoogleDriveFileId } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { showSuccess, showError } from "@/utils/toast";
 
 const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
+  const queryClient = useQueryClient();
 
   const { data: movie, isLoading, error } = useQuery({
     queryKey: ["movie", id],
@@ -42,6 +48,29 @@ const MovieDetailPage = () => {
     enabled: !!id,
   });
 
+  // Query untuk memeriksa status pembelian PPV
+  const { data: hasPurchased, isLoading: isLoadingPurchaseCheck } = useQuery({
+    queryKey: ["moviePurchase", id, user?.id],
+    queryFn: async () => {
+      if (!user || movie?.access_type !== 'premium') return false;
+      
+      const { count, error } = await supabase
+        .from("transactions")
+        .select("id", { count: 'exact' })
+        .eq("user_id", user.id)
+        .eq("movie_id", id)
+        .eq("status", "successful")
+        .limit(1);
+
+      if (error) {
+        console.error("Error checking purchase:", error);
+        return false;
+      }
+      return (count || 0) > 0;
+    },
+    enabled: !!user && !!movie && movie.access_type === 'premium',
+  });
+
   const { data: similarMovies, isLoading: isLoadingSimilar } = useQuery({
     queryKey: ["similarMovies", movie?.genre, id],
     queryFn: async () => {
@@ -58,9 +87,49 @@ const MovieDetailPage = () => {
     enabled: !!movie?.genre,
   });
 
+  const purchaseMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !movie || !movie.price || movie.price <= 0) {
+        throw new Error("Film tidak dapat dibeli atau harga tidak valid.");
+      }
+
+      // Simulasi proses pembayaran yang sukses
+      const transactionData = {
+        user_id: user.id,
+        movie_id: movie.id,
+        description: `Pembelian film: ${movie.title}`,
+        payment_method: "Simulasi PPV",
+        amount: movie.price,
+        status: "successful", // Langsung sukses untuk simulasi
+      };
+
+      const { error } = await supabase.from("transactions").insert(transactionData);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      showSuccess(`Pembelian film ${movie?.title} berhasil! Anda sekarang dapat menontonnya.`);
+      // Invalidate purchase check query
+      queryClient.invalidateQueries({ queryKey: ["moviePurchase", id, user?.id] });
+      // Redirect to watch page immediately
+      navigate(`/watch/${id}`);
+    },
+    onError: (error: Error) => {
+      showError(`Gagal melakukan pembelian: ${error.message}`);
+    },
+  });
+
   const getYear = (dateString: string | null) => {
     if (!dateString) return "N/A";
     return new Date(dateString).getFullYear();
+  };
+
+  const formatPrice = (price: number | null) => {
+    if (price === null || price === 0) return "Gratis";
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price);
   };
 
   const renderPlayer = (url: string) => {
@@ -115,7 +184,7 @@ const MovieDetailPage = () => {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingPurchaseCheck) {
     return (
       <div className="container mx-auto py-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -144,6 +213,56 @@ const MovieDetailPage = () => {
     return <div className="text-center">Film tidak ditemukan.</div>;
   }
 
+  // Determine access status
+  const isPremium = movie.access_type === 'premium';
+  const isSubscribed = profile?.subscription_status === 'premium';
+  const isFree = movie.access_type === 'free';
+  const canWatch = isFree || isSubscribed || hasPurchased;
+
+  const renderActionButton = () => {
+    if (!user) {
+        return (
+            <Button size="lg" className="flex items-center gap-2" asChild>
+                <Link to="/login">
+                    <PlayCircle className="h-6 w-6" />
+                    <span>Login untuk Menonton</span>
+                </Link>
+            </Button>
+        );
+    }
+
+    if (canWatch) {
+        return (
+            <Button size="lg" className="flex items-center gap-2" asChild>
+                <Link to={`/watch/${movie.id}`}>
+                    <PlayCircle className="h-6 w-6" />
+                    <span>Tonton Sekarang</span>
+                </Link>
+            </Button>
+        );
+    }
+
+    // If premium and not subscribed/purchased
+    if (isPremium && !canWatch) {
+        return (
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Button size="lg" className="flex items-center gap-2" onClick={() => purchaseMutation.mutate()} disabled={purchaseMutation.isPending}>
+                    <DollarSign className="h-6 w-6" />
+                    <span>{purchaseMutation.isPending ? "Memproses Pembelian..." : `Beli Film Ini (${formatPrice(movie.price)})`}</span>
+                </Button>
+                <Button size="lg" variant="secondary" className="flex items-center gap-2" asChild>
+                    <Link to="/subscribe">
+                        <Ticket className="h-6 w-6" />
+                        <span>Langganan Premium</span>
+                    </Link>
+                </Button>
+            </div>
+        );
+    }
+
+    return null;
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -160,8 +279,8 @@ const MovieDetailPage = () => {
           className="aspect-[2/3] w-full rounded-lg object-cover"
         />
         <div className="md:col-span-2">
-          <Badge variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
-            {movie.access_type === 'premium' ? 'Langganan' : 'Gratis'}
+          <Badge variant={isPremium ? 'default' : 'secondary'}>
+            {isPremium ? 'Premium' : 'Gratis'}
           </Badge>
           <h1 className="mt-2 text-4xl font-bold tracking-tight">{movie.title}</h1>
           
@@ -186,25 +305,22 @@ const MovieDetailPage = () => {
                 <span>{averageRating}</span>
               )}
             </div>
+            {isPremium && (
+                <div className="flex items-center gap-1.5 font-semibold text-primary">
+                    <DollarSign className="h-4 w-4" />
+                    <span>{formatPrice(movie.price)}</span>
+                </div>
+            )}
           </div>
 
           <p className="mt-6 text-lg leading-relaxed">{movie.description}</p>
 
           <div className="mt-8">
-            {movie.access_type === 'free' ? (
-              <Button size="lg" className="flex items-center gap-2" asChild>
-                <Link to={`/watch/${movie.id}`}>
-                  <PlayCircle className="h-6 w-6" />
-                  <span>Tonton Sekarang</span>
-                </Link>
-              </Button>
-            ) : (
-              <Button size="lg" className="flex items-center gap-2" asChild>
-                <Link to={`/watch/${movie.id}`}>
-                  <Ticket className="h-6 w-6" />
-                  <span>Tonton (Langganan)</span>
-                </Link>
-              </Button>
+            {renderActionButton()}
+            {isPremium && !canWatch && user && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                    Atau, tonton gratis dengan berlangganan paket premium.
+                </p>
             )}
           </div>
         </div>

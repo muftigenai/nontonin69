@@ -30,10 +30,37 @@ const WatchMoviePage = () => {
     enabled: !!id,
   });
 
-  const isLoading = isLoadingMovie || isLoadingProfile;
+  // Query untuk memeriksa apakah pengguna telah membeli film ini (PPV)
+  const { data: hasPurchased, isLoading: isLoadingPurchaseCheck } = useQuery({
+    queryKey: ["moviePurchase", id, user?.id],
+    queryFn: async () => {
+      if (!user || movie?.access_type !== 'premium') return false;
+      
+      const { count, error } = await supabase
+        .from("transactions")
+        .select("id", { count: 'exact' })
+        .eq("user_id", user.id)
+        .eq("movie_id", id)
+        .eq("status", "successful")
+        .limit(1);
+
+      if (error) {
+        console.error("Error checking purchase:", error);
+        return false;
+      }
+      return (count || 0) > 0;
+    },
+    enabled: !!user && !!movie && movie.access_type === 'premium',
+  });
+
+  const isLoading = isLoadingMovie || isLoadingProfile || isLoadingPurchaseCheck;
 
   // Check access rights
-  const hasAccess = movie?.access_type === 'free' || profile?.subscription_status === 'premium';
+  // Akses diberikan jika:
+  // 1. Film gratis (free)
+  // 2. Pengguna premium (subscription_status === 'premium')
+  // 3. Pengguna telah membeli film ini (hasPurchased === true)
+  const hasAccess = movie?.access_type === 'free' || profile?.subscription_status === 'premium' || hasPurchased;
 
   if (isLoading) {
     return (
@@ -65,11 +92,16 @@ const WatchMoviePage = () => {
   if (!hasAccess) {
     return (
       <div className="py-16 text-center">
-        <h2 className="text-2xl font-semibold">Akses Premium Dibutuhkan</h2>
-        <p className="mt-2 text-muted-foreground">Film ini hanya tersedia untuk pelanggan premium.</p>
-        <Button asChild className="mt-4">
-          <Link to="/subscribe">Lihat Paket Langganan</Link>
-        </Button>
+        <h2 className="text-2xl font-semibold">Akses Premium atau Pembelian Dibutuhkan</h2>
+        <p className="mt-2 text-muted-foreground">Film ini hanya tersedia untuk pelanggan premium atau melalui pembelian individual.</p>
+        <div className="flex gap-4 justify-center mt-4">
+            <Button asChild>
+                <Link to="/subscribe">Lihat Paket Langganan</Link>
+            </Button>
+            <Button variant="secondary" asChild>
+                <Link to={`/movie/${movie.id}`}>Beli Film Ini</Link>
+            </Button>
+        </div>
       </div>
     );
   }
