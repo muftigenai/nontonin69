@@ -43,10 +43,7 @@ const MovieCard = ({ movie }: MovieCardProps) => {
         </CardContent>
       </Card>
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 p-4 text-center text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <div className="flex items-center gap-1">
-          <Star className="h-5 w-5 text-yellow-400" fill="currentColor" />
-          <span className="text-lg font-bold">4.5</span>
-        </div>
+        {/* Rating removed here */}
         <h3 className="my-2 text-lg font-bold">{movie.title}</h3>
         <Button size="sm" className="mt-4" variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
           <PlayCircle className="mr-2 h-4 w-4" />

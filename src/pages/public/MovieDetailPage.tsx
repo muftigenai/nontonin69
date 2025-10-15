@@ -30,6 +30,18 @@ const MovieDetailPage = () => {
     enabled: !!id,
   });
 
+  const { data: averageRating, isLoading: isLoadingRating } = useQuery({
+    queryKey: ["movieRating", id],
+    queryFn: async () => {
+      if (!id) return 0;
+      const { data, error } = await supabase.rpc('get_average_rating', { movie_id_input: id });
+      if (error) throw new Error(error.message);
+      // Round to one decimal place
+      return parseFloat(data).toFixed(1);
+    },
+    enabled: !!id,
+  });
+
   const { data: similarMovies, isLoading: isLoadingSimilar } = useQuery({
     queryKey: ["similarMovies", movie?.genre, id],
     queryFn: async () => {
@@ -168,7 +180,11 @@ const MovieDetailPage = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <Star className="h-4 w-4 text-yellow-400" fill="currentColor" />
-              <span>4.5</span>
+              {isLoadingRating ? (
+                <Skeleton className="h-4 w-8" />
+              ) : (
+                <span>{averageRating}</span>
+              )}
             </div>
           </div>
 
