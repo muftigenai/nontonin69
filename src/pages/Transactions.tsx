@@ -49,16 +49,20 @@ const Transactions = () => {
 
   const cancelSubscriptionMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
+      // 1. Update subscription status to 'free' in profiles table
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({ subscription_status: "free" })
         .eq("id", userId);
       
-      if (error) throw new Error(error.message);
+      if (profileError) throw new Error(profileError.message);
+
+      // 2. Log activity (optional, but good practice)
+      // Note: We don't have an activity log table defined here, so we skip logging for simplicity.
     },
     onSuccess: () => {
-      showSuccess("Langganan pengguna berhasil dibatalkan.");
-      // Invalidate transactions and user data
+      showSuccess("Langganan pengguna berhasil dibatalkan. Akses premium telah dicabut.");
+      // Invalidate transactions and user data (which includes profiles)
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
@@ -68,7 +72,7 @@ const Transactions = () => {
   });
 
   const handleCancelSubscription = (userId: string, userName: string) => {
-    if (window.confirm(`Apakah Anda yakin ingin membatalkan langganan premium untuk ${userName}?`)) {
+    if (window.confirm(`Apakah Anda yakin ingin membatalkan langganan premium untuk ${userName}? Tindakan ini akan mencabut akses premium mereka segera.`)) {
       cancelSubscriptionMutation.mutate(userId);
     }
   };
@@ -162,9 +166,16 @@ const Transactions = () => {
               </TableRow>
             ) : (
               transactions?.map((trx) => {
-                const isSubscription = trx.description?.toLowerCase().includes("langganan");
+                // Check if the transaction description contains "langganan" (case-insensitive)
+                const isSubscriptionTransaction = trx.description?.toLowerCase().includes("langganan");
+                // Check if the user currently has a premium subscription status
                 const isPremiumActive = trx.user_details?.subscription_status === 'premium';
                 const userName = trx.user_details?.full_name || trx.user_details?.email || "Pengguna";
+
+                // We only show the cancel button if:
+                // 1. It was a successful subscription transaction (or just a successful transaction)
+                // 2. The user currently holds a premium status (to prevent canceling an already free account)
+                const showCancelButton = isSubscriptionTransaction && isPremiumActive && trx.user_id && trx.status === 'successful';
 
                 return (
                   <TableRow key={trx.id}>
@@ -188,7 +199,7 @@ const Transactions = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
-                          {isSubscription && isPremiumActive && trx.user_id && (
+                          {showCancelButton && (
                             <>
                               <DropdownMenuItem className="text-red-600" onClick={() => handleCancelSubscription(trx.user_id!, userName)}>
                                 <XCircle className="mr-2 h-4 w-4" />
