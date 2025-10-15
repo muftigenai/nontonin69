@@ -22,6 +22,21 @@ const MovieDetailPage = () => {
   const { profile } = useUserProfile();
   const queryClient = useQueryClient();
 
+  // Query untuk mengambil harga PPV default
+  const { data: settings } = useQuery({
+    queryKey: ["app_settings_ppv"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("key, value")
+        .eq("key", "ppv_price")
+        .single();
+      if (error && error.code !== 'PGRST116') throw new Error(error.message);
+      return Number(data?.value) || 0;
+    },
+  });
+  const defaultPpvPrice = settings || 0;
+
   const { data: movie, isLoading, error } = useQuery({
     queryKey: ["movie", id],
     queryFn: async () => {
@@ -35,6 +50,13 @@ const MovieDetailPage = () => {
     },
     enabled: !!id,
   });
+
+  // Tentukan harga film yang sebenarnya
+  const finalMoviePrice = movie 
+    ? (movie.access_type === 'premium' && (movie.price === null || movie.price === 0))
+      ? defaultPpvPrice
+      : movie.price
+    : null;
 
   const { data: averageRating, isLoading: isLoadingRating } = useQuery({
     queryKey: ["movieRating", id],
@@ -89,13 +111,14 @@ const MovieDetailPage = () => {
 
   const purchaseMutation = useMutation({
     mutationFn: async () => {
-      if (!user || !movie || !movie.price || movie.price <= 0) {
-        // Allow purchase if price is 0, but log it as a free PPV transaction
-        if (movie.price === 0) {
-          // Proceed with transaction logging for free PPV
-        } else {
-          throw new Error("Film tidak dapat dibeli atau harga tidak valid.");
-        }
+      if (!user || !movie) {
+        throw new Error("Pengguna atau film tidak ditemukan.");
+      }
+      
+      const priceToCharge = finalMoviePrice || 0;
+
+      if (priceToCharge < 0) {
+        throw new Error("Harga film tidak valid.");
       }
 
       // Simulasi proses pembayaran yang sukses
@@ -104,7 +127,7 @@ const MovieDetailPage = () => {
         movie_id: movie.id,
         description: `Pembelian film: ${movie.title}`,
         payment_method: "Simulasi PPV",
-        amount: movie.price || 0,
+        amount: priceToCharge,
         status: "successful", // Langsung sukses untuk simulasi
       };
 
@@ -249,7 +272,7 @@ const MovieDetailPage = () => {
 
     // If premium and not subscribed/purchased
     if (isPremium && !canWatch) {
-        const priceText = movie.price && movie.price > 0 ? ` (${formatPrice(movie.price)})` : '';
+        const priceText = finalMoviePrice && finalMoviePrice > 0 ? ` (${formatPrice(finalMoviePrice)})` : '';
         
         return (
             <div className="flex flex-col sm:flex-row gap-4">
@@ -315,7 +338,7 @@ const MovieDetailPage = () => {
             {isPremium && (
                 <div className="flex items-center gap-1.5 font-semibold text-primary">
                     <DollarSign className="h-4 w-4" />
-                    <span>{formatPrice(movie.price)}</span>
+                    <span>{formatPrice(finalMoviePrice)}</span>
                 </div>
             )}
           </div>
