@@ -13,10 +13,12 @@ import {
   Rocket,
   Globe,
   Users,
+  Sparkles,
 } from "lucide-react";
 
 const genres = [
   { name: "Trending Sekarang", icon: Flame, key: "trending" },
+  { name: "Baru Diunggah", icon: Sparkles, key: "newly_uploaded" },
   { name: "Aksi", icon: Swords, key: "aksi" },
   { name: "Drama", icon: Drama, key: "drama" },
   { name: "Komedi", icon: Laugh, key: "komedi" },
@@ -35,7 +37,7 @@ const PublicHomePage = () => {
         .from("movies")
         .select("*")
         .eq("status", "active")
-        .order("release_date", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data as Movie[];
     },
@@ -43,7 +45,7 @@ const PublicHomePage = () => {
 
   const getMoviesByGenre = (genreKey: string) => {
     if (!movies) return [];
-    if (genreKey === "trending") {
+    if (genreKey === "trending" || genreKey === "newly_uploaded") {
       return movies.slice(0, 10);
     }
     return movies.filter((movie) => movie.genre?.toLowerCase().includes(genreKey));
