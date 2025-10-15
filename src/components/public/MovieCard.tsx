@@ -9,7 +9,7 @@ interface MovieCardProps {
 
 const MovieCard = ({ movie }: MovieCardProps) => {
   return (
-    <Link to={`/public/movie/${movie.id}`}>
+    <Link to={`/movie/${movie.id}`}>
       <Card className="overflow-hidden transition-transform hover:scale-105 hover:shadow-lg">
         <CardHeader className="p-0">
           <div className="relative">

@@ -30,13 +30,13 @@ const Dashboard = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link to="/movies">Tambah Film Baru</Link>
+            <Link to="/admin/movies">Tambah Film Baru</Link>
           </Button>
           <Button variant="secondary" asChild>
-            <Link to="/users">Kelola Pengguna</Link>
+            <Link to="/admin/users">Kelola Pengguna</Link>
           </Button>
           <Button variant="secondary" asChild>
-            <Link to="/reports">Lihat Laporan</Link>
+            <Link to="/admin/reports">Lihat Laporan</Link>
           </Button>
         </div>
       </div>
@@ -141,7 +141,7 @@ const Dashboard = () => {
               </div>
             ))}
              <Button variant="outline" size="sm" className="mt-2" asChild>
-              <Link to="/movies" className="flex w-full items-center justify-center">
+              <Link to="/admin/movies" className="flex w-full items-center justify-center">
                 Lihat Semua Film <ArrowUpRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

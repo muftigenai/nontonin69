@@ -9,7 +9,7 @@ const Login = () => {
   const { session } = useAuth();
 
   if (session) {
-    return <Navigate to="/" />;
+    return <Navigate to="/admin" />;
   }
 
   return (

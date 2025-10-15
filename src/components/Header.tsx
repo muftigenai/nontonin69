@@ -15,13 +15,13 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", icon: Home, label: "Dashboard" },
-  { to: "/movies", icon: Clapperboard, label: "Film" },
-  { to: "/users", icon: Users, label: "Pengguna" },
-  { to: "/transactions", icon: Receipt, label: "Transaksi" },
-  { to: "/reports", icon: LineChart, label: "Laporan" },
-  { to: "/settings", icon: Settings, label: "Pengaturan" },
-  { to: "/logs", icon: Bell, label: "Notifikasi & Log" },
+  { to: "/admin", icon: Home, label: "Dashboard" },
+  { to: "/admin/movies", icon: Clapperboard, label: "Film" },
+  { to: "/admin/users", icon: Users, label: "Pengguna" },
+  { to: "/admin/transactions", icon: Receipt, label: "Transaksi" },
+  { to: "/admin/reports", icon: LineChart, label: "Laporan" },
+  { to: "/admin/settings", icon: Settings, label: "Pengaturan" },
+  { to: "/admin/logs", icon: Bell, label: "Notifikasi & Log" },
 ];
 
 const Header = () => {
@@ -47,7 +47,7 @@ const Header = () => {
           </SheetTrigger>
           <SheetContent side="left" className="pt-12">
             <nav className="grid gap-4">
-              <Link to="/" className="group mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Link to="/admin" className="group mb-4 flex items-center gap-2 text-lg font-semibold">
                 <Clapperboard className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
                 <span className="font-bold">Nontonin</span>
               </Link>
@@ -55,6 +55,7 @@ const Header = () => {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  end={item.to === "/admin"}
                   className={({ isActive }) =>
                     cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",

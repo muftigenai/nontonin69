@@ -17,10 +17,10 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const publicNavItems = [
-  { to: "/public", label: "Home" },
-  { to: "/public/categories", label: "Kategori" },
-  { to: "/public/library", label: "My Library" },
-  { to: "/public/subscribe", label: "Langganan" },
+  { to: "/", label: "Home" },
+  { to: "/categories", label: "Kategori" },
+  { to: "/library", label: "My Library" },
+  { to: "/subscribe", label: "Langganan" },
 ];
 
 const PublicNavbar = () => {
@@ -33,7 +33,7 @@ const PublicNavbar = () => {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link to="/public" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <Clapperboard className="h-7 w-7 text-primary" />
             <span className="text-xl font-bold">Nontonin</span>
           </Link>
@@ -42,7 +42,7 @@ const PublicNavbar = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === "/public"}
+                end={item.to === "/"}
                 className={({ isActive }) =>
                   cn(
                     "text-sm font-medium text-muted-foreground transition-colors hover:text-primary",
@@ -75,7 +75,7 @@ const PublicNavbar = () => {
                 <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/public/account">My Account</Link>
+                  <Link to="/account">My Account</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut}>Logout</DropdownMenuItem>

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -36,9 +36,19 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
-            
-            {/* Admin Routes */}
-            <Route path="/" element={<ProtectedRoute />}>
+
+            {/* Public Routes now at root */}
+            <Route path="/" element={<PublicLayout />}>
+              <Route index element={<PublicHomePage />} />
+              <Route path="categories" element={<CategoriesPage />} />
+              <Route path="library" element={<LibraryPage />} />
+              <Route path="subscribe" element={<SubscribePage />} />
+              <Route path="account" element={<AccountPage />} />
+              <Route path="movie/:id" element={<MovieDetailPage />} />
+            </Route>
+
+            {/* Admin Routes moved to /admin */}
+            <Route path="/admin" element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="movies" element={<Movies />} />
@@ -48,16 +58,6 @@ const App = () => (
                 <Route path="settings" element={<Settings />} />
                 <Route path="logs" element={<ActivityLog />} />
               </Route>
-            </Route>
-
-            {/* Public Routes */}
-            <Route path="/public" element={<PublicLayout />}>
-              <Route index element={<PublicHomePage />} />
-              <Route path="categories" element={<CategoriesPage />} />
-              <Route path="library" element={<LibraryPage />} />
-              <Route path="subscribe" element={<SubscribePage />} />
-              <Route path="account" element={<AccountPage />} />
-              <Route path="movie/:id" element={<MovieDetailPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
