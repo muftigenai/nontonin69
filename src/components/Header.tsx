@@ -73,8 +73,6 @@ const Header = () => {
               <Separator className="my-4" />
               <Link
                 to="/"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
                 <ExternalLink className="h-5 w-5" />
