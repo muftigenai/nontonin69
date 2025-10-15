@@ -56,7 +56,6 @@ export type Review = {
   id: string;
   created_at: string;
   rating: number;
-  comment: string | null;
   profiles: {
     full_name: string | null;
     avatar_url: string | null;

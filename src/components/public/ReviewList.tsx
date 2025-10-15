@@ -37,7 +37,6 @@ const ReviewList = ({ movieId }: ReviewListProps) => {
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-1/4" />
               <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-4 w-3/4" />
             </div>
           </div>
         ))}
@@ -46,7 +45,7 @@ const ReviewList = ({ movieId }: ReviewListProps) => {
   }
 
   if (!reviews || reviews.length === 0) {
-    return <p className="text-muted-foreground">Belum ada ulasan untuk film ini.</p>;
+    return <p className="text-muted-foreground">Belum ada rating untuk film ini.</p>;
   }
 
   return (
@@ -74,7 +73,6 @@ const ReviewList = ({ movieId }: ReviewListProps) => {
                 />
               ))}
             </div>
-            <p className="text-sm text-muted-foreground">{review.comment}</p>
           </div>
         </div>
       ))}

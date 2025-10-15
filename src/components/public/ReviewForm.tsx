@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import StarRatingInput from "./StarRatingInput";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -15,7 +14,6 @@ import React from "react";
 
 const reviewSchema = z.object({
   rating: z.number().min(1, "Rating harus diisi").max(5),
-  comment: z.string().optional(),
 });
 
 type ReviewFormData = z.infer<typeof reviewSchema>;
@@ -35,13 +33,14 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
       if (!user) return null;
       const { data, error } = await supabase
         .from("reviews")
-        .select("id, rating, comment")
+        .select("id, rating")
         .eq("movie_id", movieId)
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (error) throw new Error(error.message);
-      return data as Pick<Review, 'id' | 'rating' | 'comment'> | null;
+      // Kita hanya perlu id dan rating
+      return data as Pick<Review, 'id' | 'rating'> | null;
     },
     enabled: !!user && !!movieId,
   });
@@ -50,7 +49,6 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
     resolver: zodResolver(reviewSchema),
     defaultValues: {
       rating: 0,
-      comment: "",
     },
   });
 
@@ -59,29 +57,28 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
     if (existingReview) {
       form.reset({
         rating: existingReview.rating,
-        comment: existingReview.comment || "",
       });
     } else {
       form.reset({
         rating: 0,
-        comment: "",
       });
     }
   }, [existingReview, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: ReviewFormData) => {
-      if (!user) throw new Error("Anda harus login untuk memberikan ulasan.");
+      if (!user) throw new Error("Anda harus login untuk memberikan rating.");
       
+      const reviewData = {
+        rating: data.rating,
+        // Hapus comment dari data yang dikirim
+      };
+
       if (existingReview) {
         // UPDATE existing review
         const { error } = await supabase
           .from("reviews")
-          .update({
-            rating: data.rating,
-            comment: data.comment,
-            // We don't update created_at, but we could add an updated_at column if needed
-          })
+          .update(reviewData)
           .eq("id", existingReview.id);
         
         if (error) throw new Error(error.message);
@@ -89,7 +86,7 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
       } else {
         // INSERT new review
         const { error } = await supabase.from("reviews").insert({
-          ...data,
+          ...reviewData,
           movie_id: movieId,
           user_id: user.id,
         });
@@ -98,14 +95,14 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
       }
     },
     onSuccess: (action) => {
-      showSuccess(`Ulasan Anda berhasil di${action === "updated" ? "perbarui" : "kirim"}.`);
+      showSuccess(`Rating Anda berhasil di${action === "updated" ? "perbarui" : "kirim"}.`);
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ["reviews", movieId] });
       queryClient.invalidateQueries({ queryKey: ["movieRating", movieId] });
       queryClient.invalidateQueries({ queryKey: ["userReview", movieId, user?.id] });
     },
     onError: (error: Error) => {
-      showError(`Gagal memproses ulasan: ${error.message}`);
+      showError(`Gagal memproses rating: ${error.message}`);
     },
   });
 
@@ -116,13 +113,13 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
   if (!user) {
     return (
       <div className="text-center text-muted-foreground">
-        <a href="/login" className="underline">Login</a> untuk memberikan ulasan.
+        <a href="/login" className="underline">Login</a> untuk memberikan rating.
       </div>
     );
   }
 
   if (isLoadingExistingReview) {
-    return <Card><CardContent className="p-6 text-center text-muted-foreground">Memeriksa ulasan...</CardContent></Card>;
+    return <Card><CardContent className="p-6 text-center text-muted-foreground">Memeriksa rating...</CardContent></Card>;
   }
 
   const isEditing = !!existingReview;
@@ -130,7 +127,7 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isEditing ? "Edit Ulasan Anda" : "Tulis Ulasan Anda"}</CardTitle>
+        <CardTitle>{isEditing ? "Edit Rating Anda" : "Beri Rating Anda"}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -140,7 +137,7 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
               name="rating"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Rating Anda</FormLabel>
+                  <FormLabel>Rating Bintang</FormLabel>
                   <FormControl>
                     <StarRatingInput value={field.value} onChange={field.onChange} />
                   </FormControl>
@@ -148,21 +145,8 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="comment"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Komentar (Opsional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Bagaimana pendapat Anda tentang film ini?" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Kirim Ulasan"}
+              {mutation.isPending ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Kirim Rating"}
             </Button>
           </form>
         </Form>
