@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import StarRatingInput from "./StarRatingInput";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Review } from "@/types";
+import React from "react";
 
 const reviewSchema = z.object({
   rating: z.number().min(1, "Rating harus diisi").max(5),
@@ -26,20 +28,20 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Query untuk memeriksa apakah pengguna sudah memberikan ulasan
+  // Query untuk mengambil ulasan pengguna yang sudah ada
   const { data: existingReview, isLoading: isLoadingExistingReview } = useQuery({
     queryKey: ["userReview", movieId, user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from("reviews")
-        .select("id")
+        .select("id, rating, comment")
         .eq("movie_id", movieId)
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (error) throw new Error(error.message);
-      return data;
+      return data as Pick<Review, 'id' | 'rating' | 'comment'> | null;
     },
     enabled: !!user && !!movieId,
   });
@@ -52,32 +54,58 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
     },
   });
 
+  // Set default values once the existing review is loaded
+  React.useEffect(() => {
+    if (existingReview) {
+      form.reset({
+        rating: existingReview.rating,
+        comment: existingReview.comment || "",
+      });
+    } else {
+      form.reset({
+        rating: 0,
+        comment: "",
+      });
+    }
+  }, [existingReview, form]);
+
   const mutation = useMutation({
     mutationFn: async (data: ReviewFormData) => {
       if (!user) throw new Error("Anda harus login untuk memberikan ulasan.");
       
-      // Double check to prevent race condition
       if (existingReview) {
-        throw new Error("Anda sudah memberikan ulasan untuk film ini.");
+        // UPDATE existing review
+        const { error } = await supabase
+          .from("reviews")
+          .update({
+            rating: data.rating,
+            comment: data.comment,
+            // We don't update created_at, but we could add an updated_at column if needed
+          })
+          .eq("id", existingReview.id);
+        
+        if (error) throw new Error(error.message);
+        return "updated";
+      } else {
+        // INSERT new review
+        const { error } = await supabase.from("reviews").insert({
+          ...data,
+          movie_id: movieId,
+          user_id: user.id,
+        });
+        if (error) throw new Error(error.message);
+        return "inserted";
       }
-
-      const { error } = await supabase.from("reviews").insert({
-        ...data,
-        movie_id: movieId,
-        user_id: user.id,
-      });
-      if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
-      showSuccess("Ulasan Anda berhasil dikirim.");
-      // Invalidate both review list and average rating
+    onSuccess: (action) => {
+      showSuccess(`Ulasan Anda berhasil di${action === "updated" ? "perbarui" : "kirim"}.`);
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ["reviews", movieId] });
       queryClient.invalidateQueries({ queryKey: ["movieRating", movieId] });
       queryClient.invalidateQueries({ queryKey: ["userReview", movieId, user?.id] });
-      form.reset();
     },
     onError: (error: Error) => {
-      showError(`Gagal mengirim ulasan: ${error.message}`);
+      showError(`Gagal memproses ulasan: ${error.message}`);
     },
   });
 
@@ -97,26 +125,12 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
     return <Card><CardContent className="p-6 text-center text-muted-foreground">Memeriksa ulasan...</CardContent></Card>;
   }
 
-  if (existingReview) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Ulasan Anda</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Anda sudah memberikan ulasan untuk film ini.</p>
-          <Button variant="secondary" className="mt-4" onClick={() => queryClient.invalidateQueries({ queryKey: ["reviews", movieId] })}>
-            Lihat Ulasan Anda
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isEditing = !!existingReview;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tulis Ulasan Anda</CardTitle>
+        <CardTitle>{isEditing ? "Edit Ulasan Anda" : "Tulis Ulasan Anda"}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -148,7 +162,7 @@ const ReviewForm = ({ movieId }: ReviewFormProps) => {
               )}
             />
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Mengirim..." : "Kirim Ulasan"}
+              {mutation.isPending ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Kirim Ulasan"}
             </Button>
           </form>
         </Form>
