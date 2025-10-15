@@ -20,12 +20,14 @@ const getGenreBadgeClass = (genre: string | null) => {
 };
 
 const MovieCard = ({ movie }: MovieCardProps) => {
+  const posterUrl = movie.poster_url || "https://placehold.co/400x600?text=No+Image";
+
   return (
     <Link to={`/movie/${movie.id}`} className="group relative block overflow-hidden rounded-lg">
       <Card className="overflow-hidden transition-transform duration-300 ease-in-out group-hover:scale-105">
         <div className="relative">
           <img
-            src={movie.poster_url || "https://placehold.co/400x600?text=No+Image"}
+            src={posterUrl}
             alt={movie.title}
             className="aspect-[2/3] w-full object-cover transition-all duration-300 group-hover:brightness-50"
           />
