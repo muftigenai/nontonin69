@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Movie } from "@/types";
@@ -149,14 +149,18 @@ const MovieDetailPage = () => {
 
           <div className="mt-8">
             {movie.access_type === 'free' ? (
-              <Button size="lg" className="flex items-center gap-2">
-                <PlayCircle className="h-6 w-6" />
-                <span>Tonton Sekarang</span>
+              <Button size="lg" className="flex items-center gap-2" asChild>
+                <Link to={`/watch/${movie.id}`}>
+                  <PlayCircle className="h-6 w-6" />
+                  <span>Tonton Sekarang</span>
+                </Link>
               </Button>
             ) : (
-              <Button size="lg" className="flex items-center gap-2">
-                <Ticket className="h-6 w-6" />
-                <span>Langganan Sekarang (Rp {movie.price?.toLocaleString('id-ID') || 'N/A'})</span>
+              <Button size="lg" className="flex items-center gap-2" asChild>
+                <Link to={`/watch/${movie.id}`}>
+                  <Ticket className="h-6 w-6" />
+                  <span>Tonton (Langganan)</span>
+                </Link>
               </Button>
             )}
           </div>

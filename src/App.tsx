@@ -25,6 +25,7 @@ import SubscribePage from "./pages/public/SubscribePage";
 import AccountPage from "./pages/public/AccountPage";
 import MovieDetailPage from "./pages/public/MovieDetailPage";
 import SearchResultsPage from "./pages/public/SearchResultsPage";
+import WatchMoviePage from "./pages/public/WatchMoviePage"; // Import halaman baru
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="subscribe" element={<SubscribePage />} />
               <Route path="account" element={<AccountPage />} />
               <Route path="movie/:id" element={<MovieDetailPage />} />
+              <Route path="watch/:id" element={<WatchMoviePage />} /> {/* Rute baru */}
               <Route path="search" element={<SearchResultsPage />} />
             </Route>
 
