@@ -12,6 +12,9 @@ interface QrisPaymentDialogProps {
   description: string;
 }
 
+// QRIS Dummy SVG Data URL
+const QRIS_DUMMY_SVG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjAgMjBoMTYwdjE2MEgyMFoiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzIyMjIiIHN0cm9rZS13aWR0aD0iOCIvPjxyZWN0IHg9IjMwIiB5PSIzMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjEzMCIgeT0iMzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIzMCIgeT0iMTMwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTMwIiB5PSIxMzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iNzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI1MCIgeT0iNTAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIxNTAiIHk9IjUwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iNTAiIHk9IjE1MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjE1MCIgeT0iMTUwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTAwIiB5PSIxMDAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTAwIiB5PSI4MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjEyMCIgeT0iODAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjEyMCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE0MCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE0MCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjEwMCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjEyMCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE0MCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iMTQwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iMTIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjE2MCIgeT0iODAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSI4MCIgeT0iMTYwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTAwIiB5PSIxNjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIxMjAiIHk9IjE2MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjE0MCIgeT0iMTYwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTYwIiB5PSIxNjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIyMCIgeT0iODAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIyMCIgeT0iMTAwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMjAiIHk9IjEyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjIwIiB5PSIxNDAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIyMCIgeT0iMTYwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIiIvPjxyZWN0IHg9IjQwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjYwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjgwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjEwMCIgeT0iMjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48cmVjdCB4PSIxMjAiIHk9IjIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiMyMjIyIi8+PHJlY3QgeD0iMTQwIiB5PSIyMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMjIyMiIvPjxyZWN0IHg9IjE2MCIgeT0iMjAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIiLz48L3N2Zz4=";
+
 const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, description }: QrisPaymentDialogProps) => {
   const [status, setStatus] = useState<'pending' | 'successful' | 'failed'>('pending');
   const [countdown, setCountdown] = useState(10);
@@ -24,6 +27,7 @@ const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, descr
       return;
     }
 
+    // Start countdown only if status is pending
     if (status === 'pending') {
       const timer = setInterval(() => {
         setCountdown((prev) => {
@@ -93,10 +97,10 @@ const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, descr
             <p className="text-sm text-muted-foreground mt-1">{description}</p>
           </div>
 
-          {/* Dummy QR Code */}
+          {/* Dummy QR Code using Data URL */}
           <div className={cn("aspect-square w-48 rounded-lg border-4 border-primary p-2 bg-white", status === 'successful' && 'opacity-50')}>
             <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QRIS_logo.png" 
+              src={QRIS_DUMMY_SVG} 
               alt="QRIS Code" 
               className="h-full w-full object-contain"
             />
@@ -109,7 +113,9 @@ const QrisPaymentDialog = ({ open, onOpenChange, onPaymentSuccess, amount, descr
           <Button 
             onClick={() => onOpenChange(false)} 
             variant={status === 'successful' ? 'default' : 'outline'}
-            disabled={status === 'pending'}
+            // Tombol Batal harus selalu aktif kecuali saat mutasi sedang berjalan (di SubscribePage)
+            // Di sini, kita hanya menonaktifkannya jika status sudah sukses, agar pengguna diarahkan ke akun.
+            disabled={status === 'successful'}
           >
             {status === 'successful' ? 'Lanjut ke Akun' : 'Batal'}
           </Button>
