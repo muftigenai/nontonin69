@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AdminManagement from "@/components/admin/AdminManagement";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -74,11 +73,10 @@ const Settings = () => {
         <p className="text-muted-foreground">Kelola pengaturan aplikasi dan akun Anda.</p>
       </div>
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general">Umum</TabsTrigger>
           <TabsTrigger value="subscription">Langganan</TabsTrigger>
           <TabsTrigger value="payment">Pembayaran</TabsTrigger>
-          <TabsTrigger value="admins">Admin</TabsTrigger>
         </TabsList>
         <TabsContent value="general">
           <Card>
@@ -154,9 +152,6 @@ const Settings = () => {
               <Button disabled>Simpan Konfigurasi</Button>
             </CardFooter>
           </Card>
-        </TabsContent>
-        <TabsContent value="admins">
-           <AdminManagement />
         </TabsContent>
       </Tabs>
     </div>
