@@ -21,6 +21,7 @@ const generalSettingsSchema = z.object({
 const subscriptionSettingsSchema = z.object({
   monthlyPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
   annualPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
+  ppvPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"), // New field
 });
 
 type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema> & {
@@ -38,7 +39,7 @@ const Settings = () => {
 
   const subscriptionForm = useForm<z.infer<typeof subscriptionSettingsSchema>>({
     resolver: zodResolver(subscriptionSettingsSchema),
-    defaultValues: { monthlyPrice: 0, annualPrice: 0 },
+    defaultValues: { monthlyPrice: 0, annualPrice: 0, ppvPrice: 0 }, // Default value for PPV
   });
 
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
@@ -60,6 +61,7 @@ const Settings = () => {
       setLogoPreview(settings.app_logo_url || null);
       subscriptionForm.setValue("monthlyPrice", Number(settings.monthly_price) || 0);
       subscriptionForm.setValue("annualPrice", Number(settings.annual_price) || 0);
+      subscriptionForm.setValue("ppvPrice", Number(settings.ppv_price) || 0); // Set PPV price
     }
   }, [settings, generalForm, subscriptionForm]);
 
@@ -99,6 +101,7 @@ const Settings = () => {
       const updates = [
         supabase.rpc('update_setting', { p_key: 'monthly_price', p_value: String(values.monthlyPrice) }),
         supabase.rpc('update_setting', { p_key: 'annual_price', p_value: String(values.annualPrice) }),
+        supabase.rpc('update_setting', { p_key: 'ppv_price', p_value: String(values.ppvPrice) }), // Save PPV price
       ];
       const results = await Promise.all(updates);
       results.forEach(({ error }) => {
@@ -235,8 +238,8 @@ const Settings = () => {
             <Form {...subscriptionForm}>
               <form onSubmit={subscriptionForm.handleSubmit(onSubscriptionSubmit)}>
                 <CardHeader>
-                  <CardTitle>Pengaturan Langganan</CardTitle>
-                  <CardDescription>Atur harga untuk paket langganan premium.</CardDescription>
+                  <CardTitle>Pengaturan Langganan & PPV</CardTitle>
+                  <CardDescription>Atur harga untuk paket langganan premium dan harga default Pay Per View (PPV).</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
@@ -258,6 +261,19 @@ const Settings = () => {
                     render={({ field }) => (
                       <FormItem>
                         <Label>Harga Tahunan (Rp)</Label>
+                        <FormControl>
+                          <Input type="number" {...field} disabled={isLoadingSettings} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={subscriptionForm.control}
+                    name="ppvPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label>Harga Default Pay Per View (Rp)</Label>
                         <FormControl>
                           <Input type="number" {...field} disabled={isLoadingSettings} />
                         </FormControl>
