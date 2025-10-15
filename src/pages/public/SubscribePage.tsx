@@ -2,27 +2,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, CheckCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/providers/AuthProvider";
 import { showSuccess, showError } from "@/utils/toast";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { useState } from "react";
 import QrisPaymentDialog from "@/components/public/QrisPaymentDialog";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type SubscriptionPeriod = 'monthly' | 'annual';
 
 const SubscribePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { profile, isLoading: isLoadingProfile } = useUserProfile();
   const queryClient = useQueryClient();
 
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [currentPayment, setCurrentPayment] = useState<{ price: number; period: SubscriptionPeriod; description: string } | null>(null);
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ["app_settings"],
     queryFn: async () => {
       const { data, error } = await supabase.from("app_settings").select("key, value");
@@ -36,6 +40,7 @@ const SubscribePage = () => {
 
   const monthlyPrice = settings?.monthly_price ? Number(settings.monthly_price) : 0;
   const annualPrice = settings?.annual_price ? Number(settings.annual_price) : 0;
+  const isLoading = isLoadingSettings || isLoadingProfile;
 
   // Mutation untuk memproses pembaruan profil dan transaksi setelah pembayaran sukses
   const subscriptionMutation = useMutation({
@@ -122,7 +127,7 @@ const SubscribePage = () => {
     periodKey: SubscriptionPeriod,
     isPopular: boolean = false
   ) => (
-    <Card className={cn("flex flex-col", isPopular && "border-primary")}>
+    <Card className={cn("flex flex-col", isPopular && "border-primary", profile?.isPremiumActive && "bg-muted/50")}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>
@@ -150,10 +155,14 @@ const SubscribePage = () => {
       <CardFooter>
         <Button 
           className="w-full" 
-          disabled={isLoading || subscriptionMutation.isPending}
+          disabled={isLoading || subscriptionMutation.isPending || profile?.isPremiumActive}
           onClick={() => handleInitiatePayment(price, periodKey)}
         >
-          {subscriptionMutation.isPending ? "Memproses..." : "Pilih Paket"}
+          {profile?.isPremiumActive 
+            ? "Paket Anda Aktif" 
+            : subscriptionMutation.isPending 
+            ? "Memproses..." 
+            : "Pilih Paket"}
         </Button>
       </CardFooter>
     </Card>
@@ -175,6 +184,18 @@ const SubscribePage = () => {
           </div>
           <div className="h-8 w-8 flex-shrink-0" /> {/* Placeholder for alignment */}
         </div>
+
+        {profile?.isPremiumActive && profile.subscription_end_date && (
+          <Alert variant="default" className="mx-auto max-w-4xl border-green-500 text-green-700">
+            <CheckCircle className="h-4 w-4 !text-green-500" />
+            <AlertTitle className="text-green-800">Anda Sudah Berlangganan!</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Paket premium Anda aktif hingga {format(new Date(profile.subscription_end_date), "dd MMMM yyyy", { locale: idLocale })}.
+              Anda tidak dapat membeli paket baru hingga paket saat ini berakhir.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
           {renderPlanCard("Bulanan", monthlyPrice, "bulan", "monthly")}
           {renderPlanCard("Tahunan", annualPrice, "tahun", "annual", true)}
