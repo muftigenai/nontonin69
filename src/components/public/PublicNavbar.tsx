@@ -1,4 +1,4 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,8 @@ const PublicNavbar = () => {
   const { user, signOut } = useAuth();
   const { profile } = useUserProfile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -38,6 +40,14 @@ const PublicNavbar = () => {
         .toUpperCase();
     }
     return user?.email?.[0].toUpperCase() ?? "U";
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      setSearchTerm("");
+    }
   };
 
   return (
@@ -68,10 +78,15 @@ const PublicNavbar = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative hidden sm:block">
+          <form onSubmit={handleSearchSubmit} className="relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Cari film..." className="w-full rounded-full pl-10" />
-          </div>
+            <Input
+              placeholder="Cari film..."
+              className="w-full rounded-full pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </form>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

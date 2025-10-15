@@ -24,6 +24,7 @@ import LibraryPage from "./pages/public/LibraryPage";
 import SubscribePage from "./pages/public/SubscribePage";
 import AccountPage from "./pages/public/AccountPage";
 import MovieDetailPage from "./pages/public/MovieDetailPage";
+import SearchResultsPage from "./pages/public/SearchResultsPage";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="subscribe" element={<SubscribePage />} />
               <Route path="account" element={<AccountPage />} />
               <Route path="movie/:id" element={<MovieDetailPage />} />
+              <Route path="search" element={<SearchResultsPage />} />
             </Route>
 
             {/* Admin Routes moved to /admin */}
