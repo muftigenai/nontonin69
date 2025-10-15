@@ -10,10 +10,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { showSuccess, showError } from "@/utils/toast";
-import React from "react";
+import React, { useState } from "react";
+import { Image } from "lucide-react";
 
 const generalSettingsSchema = z.object({
   appName: z.string().min(1, "Nama aplikasi tidak boleh kosong"),
+  logo_file: z.instanceof(FileList).optional(),
 });
 
 const subscriptionSettingsSchema = z.object({
@@ -21,12 +23,17 @@ const subscriptionSettingsSchema = z.object({
   annualPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
 });
 
+type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema> & {
+  current_logo_url?: string | null;
+};
+
 const Settings = () => {
   const queryClient = useQueryClient();
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const generalForm = useForm<z.infer<typeof generalSettingsSchema>>({
+  const generalForm = useForm<GeneralSettingsFormValues>({
     resolver: zodResolver(generalSettingsSchema),
-    defaultValues: { appName: "" },
+    defaultValues: { appName: "", current_logo_url: null },
   });
 
   const subscriptionForm = useForm<z.infer<typeof subscriptionSettingsSchema>>({
@@ -49,10 +56,31 @@ const Settings = () => {
   React.useEffect(() => {
     if (settings) {
       generalForm.setValue("appName", settings.app_name || "");
+      generalForm.setValue("current_logo_url", settings.app_logo_url || null);
+      setLogoPreview(settings.app_logo_url || null);
       subscriptionForm.setValue("monthlyPrice", Number(settings.monthly_price) || 0);
       subscriptionForm.setValue("annualPrice", Number(settings.annual_price) || 0);
     }
   }, [settings, generalForm, subscriptionForm]);
+
+  const uploadLogo = async (fileList: FileList | undefined) => {
+    if (fileList && fileList.length > 0) {
+      const file = fileList[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `logo/app_logo.${fileExt}`; // Use a fixed name for the main logo
+
+      // Upload file, replacing existing one (upsert: true)
+      const { error: uploadError } = await supabase.storage
+        .from('app_assets')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw new Error(`Gagal mengunggah logo: ${uploadError.message}`);
+
+      const { data: urlData } = supabase.storage.from('app_assets').getPublicUrl(filePath);
+      return urlData.publicUrl;
+    }
+    return null;
+  };
 
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
@@ -84,12 +112,41 @@ const Settings = () => {
     onError: (error: Error) => showError(error.message),
   });
 
-  const onGeneralSubmit = (values: z.infer<typeof generalSettingsSchema>) => {
-    updateSettingMutation.mutate({ key: "app_name", value: values.appName });
+  const onGeneralSubmit = async (values: GeneralSettingsFormValues) => {
+    try {
+      const logoUrl = await uploadLogo(values.logo_file);
+      
+      const updates = [
+        updateSettingMutation.mutateAsync({ key: "app_name", value: values.appName }),
+      ];
+
+      if (logoUrl) {
+        updates.push(updateSettingMutation.mutateAsync({ key: "app_logo_url", value: logoUrl }));
+      } else if (values.logo_file && values.logo_file.length === 0 && values.current_logo_url) {
+        // If user clears the file input but there was a current URL, we keep the current URL.
+        // If we wanted to allow deletion, we'd need a separate delete button/logic.
+      }
+
+      await Promise.all(updates);
+      showSuccess("Pengaturan umum berhasil diperbarui.");
+      queryClient.invalidateQueries({ queryKey: ["app_settings"] });
+    } catch (error: any) {
+      showError(error.message);
+    }
   };
 
   const onSubscriptionSubmit = (values: z.infer<typeof subscriptionSettingsSchema>) => {
     updateSubscriptionMutation.mutate(values);
+  };
+
+  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setLogoPreview(URL.createObjectURL(file));
+    } else {
+      // Revert to current URL if file input is cleared
+      setLogoPreview(generalForm.getValues("current_logo_url") || null);
+    }
   };
 
   return (
@@ -126,11 +183,43 @@ const Settings = () => {
                       </FormItem>
                     )}
                   />
-                  <div className="space-y-2">
-                    <Label htmlFor="logo">Logo</Label>
-                    <Input id="logo" type="file" disabled />
-                    <p className="text-sm text-muted-foreground">Fitur unggah logo belum tersedia.</p>
-                  </div>
+                  <FormField
+                    control={generalForm.control}
+                    name="logo_file"
+                    render={({ field: { value, onChange, ...fieldProps } }) => (
+                      <FormItem>
+                        <Label htmlFor="logo">Logo Aplikasi</Label>
+                        <div className="flex items-center gap-4">
+                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
+                            {logoPreview ? (
+                              <img src={logoPreview} alt="Logo Preview" className="h-full w-full object-contain p-1" />
+                            ) : (
+                              <Image className="h-8 w-8 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <FormControl>
+                              <Input
+                                id="logo"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  onChange(e.target.files);
+                                  handleLogoFileChange(e);
+                                }}
+                                {...fieldProps}
+                                disabled={isLoadingSettings}
+                              />
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Unggah file gambar baru untuk logo.
+                            </p>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" disabled={updateSettingMutation.isPending}>
