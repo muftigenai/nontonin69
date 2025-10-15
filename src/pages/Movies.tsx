@@ -197,7 +197,7 @@ const Movies = () => {
                   <TableCell>{new Date(movie.release_date || "").toLocaleDateString("id-ID")}</TableCell>
                   <TableCell>
                     <Badge variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
-                      {movie.access_type === 'premium' ? 'Premium' : 'Gratis'}
+                      {movie.access_type === 'premium' ? 'Langganan' : 'Gratis'}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -329,7 +329,7 @@ const Movies = () => {
                       </FormItem>
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl><RadioGroupItem value="premium" /></FormControl>
-                        <FormLabel className="font-normal">Premium</FormLabel>
+                        <FormLabel className="font-normal">Langganan (Premium)</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>

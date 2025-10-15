@@ -30,7 +30,7 @@ const MovieCard = ({ movie }: MovieCardProps) => {
             className="aspect-[2/3] w-full object-cover transition-all duration-300 group-hover:brightness-50"
           />
           {movie.access_type === "premium" && (
-            <Badge className="absolute top-2 right-2 border border-black/20">Premium</Badge>
+            <Badge className="absolute top-2 right-2 border border-black/20">Langganan</Badge>
           )}
         </div>
         <CardContent className="p-3">
@@ -48,7 +48,7 @@ const MovieCard = ({ movie }: MovieCardProps) => {
         <h3 className="my-2 text-lg font-bold">{movie.title}</h3>
         <Button size="sm" className="mt-4" variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
           <PlayCircle className="mr-2 h-4 w-4" />
-          {movie.access_type === 'premium' ? 'Beli Film' : 'Tonton Sekarang'}
+          {movie.access_type === 'premium' ? 'Langganan' : 'Tonton Sekarang'}
         </Button>
       </div>
     </Link>

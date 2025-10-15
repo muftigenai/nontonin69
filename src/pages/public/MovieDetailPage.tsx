@@ -122,7 +122,7 @@ const MovieDetailPage = () => {
         />
         <div className="md:col-span-2">
           <Badge variant={movie.access_type === 'premium' ? 'default' : 'secondary'}>
-            {movie.access_type === 'premium' ? 'Premium' : 'Gratis'}
+            {movie.access_type === 'premium' ? 'Langganan' : 'Gratis'}
           </Badge>
           <h1 className="mt-2 text-4xl font-bold tracking-tight">{movie.title}</h1>
           
@@ -156,7 +156,7 @@ const MovieDetailPage = () => {
             ) : (
               <Button size="lg" className="flex items-center gap-2">
                 <Ticket className="h-6 w-6" />
-                <span>Beli Sekarang (Rp {movie.price?.toLocaleString('id-ID') || 'N/A'})</span>
+                <span>Langganan Sekarang (Rp {movie.price?.toLocaleString('id-ID') || 'N/A'})</span>
               </Button>
             )}
           </div>
