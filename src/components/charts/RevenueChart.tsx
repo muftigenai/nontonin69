@@ -3,14 +3,7 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const data = [
-  { month: "Jan", revenue: 4000 },
-  { month: "Feb", revenue: 3000 },
-  { month: "Mar", revenue: 5000 },
-  { month: "Apr", revenue: 4500 },
-  { month: "May", revenue: 6000 },
-  { month: "Jun", revenue: 5500 },
-];
+const data: { month: string; revenue: number }[] = []; // Data direset menjadi kosong
 
 const RevenueChart = () => {
   return (
@@ -33,6 +26,11 @@ const RevenueChart = () => {
             <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+        {data.length === 0 && (
+          <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+            Data pendapatan belum tersedia.
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -3,14 +3,7 @@
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const data = [
-  { month: "Jan", users: 100 },
-  { month: "Feb", users: 120 },
-  { month: "Mar", users: 150 },
-  { month: "Apr", users: 180 },
-  { month: "May", users: 220 },
-  { month: "Jun", users: 250 },
-];
+const data: { month: string; users: number }[] = []; // Data direset menjadi kosong
 
 const UserGrowthChart = () => {
   return (
@@ -33,6 +26,11 @@ const UserGrowthChart = () => {
             <Line type="monotone" dataKey="users" stroke="hsl(var(--primary))" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
+        {data.length === 0 && (
+          <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+            Data pertumbuhan pengguna belum tersedia.
+          </div>
+        )}
       </CardContent>
     </Card>
   );
