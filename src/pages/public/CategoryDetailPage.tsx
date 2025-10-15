@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useMemo } from "react";
+import { useAuth } from "@/providers/AuthProvider"; // Import useAuth
 
 const categoryTitles: { [key: string]: string } = {
   trending: "Trending Sekarang",
@@ -21,13 +22,16 @@ const categoryTitles: { [key: string]: string } = {
   keluarga: "Keluarga",
   premium: "Film Premium",
   "recently-watched": "Baru Saja Ditonton",
+  rekomendasi: "Rekomendasi Untukmu", // Tambahkan ini juga
 };
 
 const CategoryDetailPage = () => {
   const { genreKey } = useParams<{ genreKey: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Gunakan useAuth
 
-  const { data: movies, isLoading, error } = useQuery({
+  // Query untuk semua film aktif (digunakan untuk genre umum)
+  const { data: allMovies, isLoading: isLoadingAllMovies, error: errorAllMovies } = useQuery({
     queryKey: ["public_movies"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,24 +44,52 @@ const CategoryDetailPage = () => {
     },
   });
 
-  const filteredMovies = useMemo(() => {
-    if (!movies || !genreKey) return [];
-    
+  // Query untuk riwayat tontonan (digunakan untuk "recently-watched")
+  const { data: watchHistory, isLoading: isLoadingWatchHistory } = useQuery({
+    queryKey: ["watch_history_full", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("watch_history")
+        .select("movies(*)")
+        .eq("user_id", user.id)
+        .order("watched_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data.map((item: any) => item.movies).filter(Boolean) as Movie[];
+    },
+    enabled: !!user && genreKey === "recently-watched",
+  });
+
+  const { filteredMovies, isLoading } = useMemo(() => {
+    if (genreKey === "recently-watched") {
+      return { filteredMovies: watchHistory || [], isLoading: isLoadingWatchHistory };
+    }
+
+    const movies = allMovies || [];
+    let filtered: Movie[] = [];
+
     switch (genreKey) {
       case "trending":
       case "newly_uploaded":
-        return movies; // For simplicity, show all movies as they are already sorted by new
+        filtered = movies;
+        break;
       case "premium":
-        return movies.filter(m => m.access_type === 'premium');
-      // "recently-watched" would require a separate query, not handled here for now.
+        filtered = movies.filter(m => m.access_type === 'premium');
+        break;
       default:
-        return movies.filter((movie) =>
-          movie.genre?.toLowerCase().includes(genreKey.toLowerCase())
+        filtered = movies.filter((movie) =>
+          movie.genre?.toLowerCase().includes(genreKey?.toLowerCase() || "")
         );
+        break;
     }
-  }, [movies, genreKey]);
+    return { filteredMovies: filtered, isLoading: isLoadingAllMovies };
+  }, [allMovies, watchHistory, genreKey, isLoadingAllMovies, isLoadingWatchHistory]);
 
   const pageTitle = genreKey ? categoryTitles[genreKey] || genreKey.charAt(0).toUpperCase() + genreKey.slice(1) : "Kategori";
+
+  if (errorAllMovies) {
+    return <p className="text-center text-red-500">Gagal memuat film: {errorAllMovies.message}</p>;
+  }
 
   return (
     <div className="space-y-6">
@@ -71,7 +103,7 @@ const CategoryDetailPage = () => {
         </h1>
       </div>
 
-      {isLoading && (
+      {isLoading ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="space-y-2">
@@ -80,11 +112,7 @@ const CategoryDetailPage = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {error && <p className="text-center text-red-500">Gagal memuat film.</p>}
-
-      {!isLoading && filteredMovies && (
+      ) : (
         <>
           {filteredMovies.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-center">
