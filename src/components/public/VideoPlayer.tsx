@@ -26,9 +26,10 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [isSubtitleEnabled, setIsSubtitleEnabled] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false); // State baru untuk melacak status fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(false); 
 
-  // --- Video Controls Logic ---
+  // Timer untuk menyembunyikan kontrol setelah beberapa detik
+  const controlHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const togglePlay = useCallback(() => {
     if (videoRef.current) {
@@ -41,7 +42,25 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     }
   }, [isPlaying]);
 
-  // 1. Load initial watch progress
+  // Function to reset the control hide timer
+  const resetControlTimer = useCallback(() => {
+    if (controlHideTimer.current) {
+      clearTimeout(controlHideTimer.current);
+    }
+    setShowControls(true);
+    if (isPlaying) {
+      controlHideTimer.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000); // Hide controls after 3 seconds of inactivity
+    }
+  }, [isPlaying]);
+
+  // Handle mouse movement to show controls
+  const handleMouseMove = useCallback(() => {
+    resetControlTimer();
+  }, [resetControlTimer]);
+
+  // Initial load and periodic save logic remains the same
   useEffect(() => {
     const loadProgress = async () => {
       if (!user || !videoRef.current) return;
@@ -62,13 +81,11 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     loadProgress();
   }, [user, movie.id]);
 
-  // 2. Save watch progress periodically
   const saveProgress = useCallback(async (time: number) => {
     if (!user || !movie.id) return;
 
     const progress_seconds = Math.floor(time);
 
-    // Upsert (Insert or Update) watch history
     const { error } = await supabase.from("watch_history").upsert(
       {
         user_id: user.id,
@@ -95,13 +112,13 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
 
     return () => {
       clearInterval(interval);
-      // Save final progress when component unmounts
       if (videoRef.current) {
         saveProgress(videoRef.current.currentTime);
       }
     };
   }, [isPlaying, user, saveProgress]);
 
+  // Fullscreen logic
   const toggleFullscreen = useCallback(() => {
     if (containerRef.current) {
       if (!document.fullscreenElement) {
@@ -114,7 +131,7 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     }
   }, []);
 
-  // 3. Keyboard Controls (Spacebar for Play/Pause, 'F' for Fullscreen)
+  // Keyboard Controls
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
@@ -136,20 +153,30 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     };
   }, [togglePlay, toggleFullscreen]);
 
-  // 4. Listen for fullscreen changes to update state
+  // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const newFullscreenStatus = !!document.fullscreenElement;
+      setIsFullscreen(newFullscreenStatus);
+      // When exiting fullscreen, ensure controls are visible initially
+      if (!newFullscreenStatus) {
+        setShowControls(true);
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // For Safari
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  // Reset timer when playing state changes
+  useEffect(() => {
+    resetControlTimer();
+  }, [isPlaying, resetControlTimer]);
 
 
   const handleTimeUpdate = () => {
@@ -188,7 +215,6 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
       if (newMuted) {
         setVolume(0);
       } else if (videoRef.current.volume === 0) {
-        // Restore volume if it was 0 before muting
         videoRef.current.volume = 0.5;
         setVolume(0.5);
       }
@@ -230,17 +256,25 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
       ref={containerRef}
       className="relative w-full bg-black group"
       onContextMenu={handleContextMenu}
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
-      tabIndex={0} // Make the container focusable
+      onMouseMove={handleMouseMove} // Use mouse move to reset timer
+      onMouseLeave={() => {
+        if (controlHideTimer.current) {
+          clearTimeout(controlHideTimer.current);
+        }
+        // Only hide controls if playing and not paused
+        if (isPlaying) {
+            setShowControls(false);
+        }
+      }}
+      tabIndex={0}
     >
       {/* Video Element */}
       <video
         ref={videoRef}
         src={movie.video_url || movie.trailer_url || undefined}
         poster={movie.poster_url || undefined}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPlay={() => { setIsPlaying(true); resetControlTimer(); }}
+        onPause={() => { setIsPlaying(false); resetControlTimer(); }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onClick={togglePlay}
@@ -262,11 +296,13 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
       <div
         className={cn(
           "absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-300",
-          showControls || !isPlaying ? "opacity-100" : "opacity-0"
+          showControls || !isPlaying ? "opacity-100" : "opacity-0",
+          // Hide cursor when controls are hidden
+          !showControls && isPlaying && "cursor-none"
         )}
       >
-        {/* Play/Pause Center Button (only visible when paused) */}
-        {!isPlaying && (
+        {/* Play/Pause Center Button (only visible when paused or controls are shown) */}
+        {(!isPlaying || showControls) && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Button
               variant="ghost"
@@ -274,13 +310,13 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
               className="h-20 w-20 text-white/80 hover:text-white transition-colors"
               onClick={togglePlay}
             >
-              <Play className="h-16 w-16 fill-white" />
+              {isPlaying ? <Pause className="h-16 w-16 fill-white" /> : <Play className="h-16 w-16 fill-white" />}
             </Button>
           </div>
         )}
 
-        {/* Progress Bar (Hidden when fullscreen) */}
-        {!isFullscreen && (
+        {/* Progress Bar (Always hidden when fullscreen, or when controls are hidden) */}
+        {showControls && !isFullscreen && (
           <div className="px-4 pb-2">
             <Slider
               value={[currentTime]}
@@ -293,47 +329,49 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
         )}
 
         {/* Bottom Control Bar */}
-        <div className="flex items-center justify-between p-4 pt-0">
-          <div className="flex items-center gap-4">
-            {/* Play/Pause Button */}
-            <Button variant="ghost" size="icon" onClick={togglePlay} className="text-white hover:bg-white/20">
-              {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-            </Button>
-
-            {/* Time Display */}
-            <span className="text-sm text-white">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-
-            {/* Volume Control */}
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={toggleMute} className="text-white hover:bg-white/20">
-                {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        {showControls && (
+          <div className="flex items-center justify-between p-4 pt-0">
+            <div className="flex items-center gap-4">
+              {/* Play/Pause Button */}
+              <Button variant="ghost" size="icon" onClick={togglePlay} className="text-white hover:bg-white/20">
+                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
               </Button>
-              <Slider
-                value={[isMuted ? 0 : volume * 100]}
-                max={100}
-                step={1}
-                onValueChange={handleVolumeChange}
-                className="w-20 cursor-pointer"
-              />
+
+              {/* Time Display */}
+              <span className="text-sm text-white">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+
+              {/* Volume Control */}
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={toggleMute} className="text-white hover:bg-white/20">
+                  {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </Button>
+                <Slider
+                  value={[isMuted ? 0 : volume * 100]}
+                  max={100}
+                  step={1}
+                  onValueChange={handleVolumeChange}
+                  className="w-20 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Subtitle Button */}
+              {movie.subtitle_url && (
+                <Button variant="ghost" size="icon" onClick={toggleSubtitle} className={cn("text-white hover:bg-white/20", isSubtitleEnabled ? "text-primary" : "text-white/70")}>
+                  <Subtitles className="h-5 w-5" />
+                </Button>
+              )}
+              
+              {/* Fullscreen Button */}
+              <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20">
+                <Maximize className="h-6 w-6" />
+              </Button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {/* Subtitle Button */}
-            {movie.subtitle_url && (
-              <Button variant="ghost" size="icon" onClick={toggleSubtitle} className={cn("text-white hover:bg-white/20", isSubtitleEnabled ? "text-primary" : "text-white/70")}>
-                <Subtitles className="h-5 w-5" />
-              </Button>
-            )}
-            
-            {/* Fullscreen Button */}
-            <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-white hover:bg-white/20">
-              <Maximize className="h-6 w-6" />
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
