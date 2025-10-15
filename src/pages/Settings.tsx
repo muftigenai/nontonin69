@@ -16,14 +16,22 @@ const generalSettingsSchema = z.object({
   appName: z.string().min(1, "Nama aplikasi tidak boleh kosong"),
 });
 
+const subscriptionSettingsSchema = z.object({
+  monthlyPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
+  annualPrice: z.coerce.number().min(0, "Harga harus angka non-negatif"),
+});
+
 const Settings = () => {
   const queryClient = useQueryClient();
 
-  const form = useForm<z.infer<typeof generalSettingsSchema>>({
+  const generalForm = useForm<z.infer<typeof generalSettingsSchema>>({
     resolver: zodResolver(generalSettingsSchema),
-    defaultValues: {
-      appName: "",
-    },
+    defaultValues: { appName: "" },
+  });
+
+  const subscriptionForm = useForm<z.infer<typeof subscriptionSettingsSchema>>({
+    resolver: zodResolver(subscriptionSettingsSchema),
+    defaultValues: { monthlyPrice: 0, annualPrice: 0 },
   });
 
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
@@ -31,39 +39,57 @@ const Settings = () => {
     queryFn: async () => {
       const { data, error } = await supabase.from("app_settings").select("*");
       if (error) throw new Error(error.message);
-      const settingsObj = data.reduce((acc, setting) => {
+      return data.reduce((acc, setting) => {
         acc[setting.key] = setting.value;
         return acc;
       }, {} as Record<string, string>);
-      return settingsObj;
     },
   });
 
   React.useEffect(() => {
-    if (settings?.app_name) {
-      form.setValue("appName", settings.app_name);
+    if (settings) {
+      generalForm.setValue("appName", settings.app_name || "");
+      subscriptionForm.setValue("monthlyPrice", Number(settings.monthly_price) || 0);
+      subscriptionForm.setValue("annualPrice", Number(settings.annual_price) || 0);
     }
-  }, [settings, form]);
+  }, [settings, generalForm, subscriptionForm]);
 
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
-      const { error } = await supabase
-        .from("app_settings")
-        .update({ value })
-        .eq("key", key);
+      const { error } = await supabase.from("app_settings").update({ value }).eq("key", key);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       showSuccess("Pengaturan berhasil disimpan.");
       queryClient.invalidateQueries({ queryKey: ["app_settings"] });
     },
-    onError: (error) => {
-      showError(`Gagal menyimpan: ${error.message}`);
+    onError: (error) => showError(`Gagal menyimpan: ${error.message}`),
+  });
+
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof subscriptionSettingsSchema>) => {
+      const updates = [
+        supabase.from("app_settings").update({ value: String(values.monthlyPrice) }).eq("key", "monthly_price"),
+        supabase.from("app_settings").update({ value: String(values.annualPrice) }).eq("key", "annual_price"),
+      ];
+      const results = await Promise.all(updates);
+      results.forEach(({ error }) => {
+        if (error) throw new Error(`Gagal memperbarui harga: ${error.message}`);
+      });
     },
+    onSuccess: () => {
+      showSuccess("Harga langganan berhasil disimpan.");
+      queryClient.invalidateQueries({ queryKey: ["app_settings"] });
+    },
+    onError: (error: Error) => showError(error.message),
   });
 
   const onGeneralSubmit = (values: z.infer<typeof generalSettingsSchema>) => {
     updateSettingMutation.mutate({ key: "app_name", value: values.appName });
+  };
+
+  const onSubscriptionSubmit = (values: z.infer<typeof subscriptionSettingsSchema>) => {
+    updateSubscriptionMutation.mutate(values);
   };
 
   return (
@@ -80,15 +106,15 @@ const Settings = () => {
         </TabsList>
         <TabsContent value="general">
           <Card>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onGeneralSubmit)}>
+            <Form {...generalForm}>
+              <form onSubmit={generalForm.handleSubmit(onGeneralSubmit)}>
                 <CardHeader>
                   <CardTitle>Pengaturan Umum</CardTitle>
                   <CardDescription>Ubah nama dan logo aplikasi Anda di sini.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
-                    control={form.control}
+                    control={generalForm.control}
                     name="appName"
                     render={({ field }) => (
                       <FormItem>
@@ -103,7 +129,7 @@ const Settings = () => {
                   <div className="space-y-2">
                     <Label htmlFor="logo">Logo</Label>
                     <Input id="logo" type="file" disabled />
-                     <p className="text-sm text-muted-foreground">Fitur unggah logo belum tersedia.</p>
+                    <p className="text-sm text-muted-foreground">Fitur unggah logo belum tersedia.</p>
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -117,27 +143,51 @@ const Settings = () => {
         </TabsContent>
         <TabsContent value="subscription">
           <Card>
-            <CardHeader>
-              <CardTitle>Pengaturan Langganan</CardTitle>
-              <CardDescription>Atur harga untuk paket langganan premium.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="monthlyPrice">Harga Bulanan (Rp)</Label>
-                <Input id="monthlyPrice" type="number" defaultValue="99000" />
-              </div>
-               <div className="space-y-2">
-                <Label htmlFor="annualPrice">Harga Tahunan (Rp)</Label>
-                <Input id="annualPrice" type="number" defaultValue="999000" />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button disabled>Simpan Harga</Button>
-            </CardFooter>
+            <Form {...subscriptionForm}>
+              <form onSubmit={subscriptionForm.handleSubmit(onSubscriptionSubmit)}>
+                <CardHeader>
+                  <CardTitle>Pengaturan Langganan</CardTitle>
+                  <CardDescription>Atur harga untuk paket langganan premium.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={subscriptionForm.control}
+                    name="monthlyPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label>Harga Bulanan (Rp)</Label>
+                        <FormControl>
+                          <Input type="number" {...field} disabled={isLoadingSettings} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={subscriptionForm.control}
+                    name="annualPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label>Harga Tahunan (Rp)</Label>
+                        <FormControl>
+                          <Input type="number" {...field} disabled={isLoadingSettings} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" disabled={updateSubscriptionMutation.isPending}>
+                    {updateSubscriptionMutation.isPending ? "Menyimpan..." : "Simpan Harga"}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
           </Card>
         </TabsContent>
         <TabsContent value="payment">
-           <Card>
+          <Card>
             <CardHeader>
               <CardTitle>Gateway Pembayaran</CardTitle>
               <CardDescription>Konfigurasi kunci API untuk integrasi pembayaran.</CardDescription>
