@@ -6,13 +6,14 @@ import { Movie } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import LibraryMovieCard from "@/components/public/LibraryMovieCard";
-import { Clapperboard } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Clapperboard, ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 type FilterType = "all" | "free" | "premium";
 
 const LibraryPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterType>("all");
 
   const { data: libraryMovies, isLoading } = useQuery({
@@ -64,9 +65,15 @@ const LibraryPage = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Koleksi Saya</h1>
-        <p className="mt-2 text-muted-foreground">Semua film yang sudah Anda tonton atau beli.</p>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="sr-only">Kembali</span>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">Koleksi Saya</h1>
+          <p className="mt-2 text-muted-foreground">Semua film yang sudah Anda tonton atau beli.</p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
