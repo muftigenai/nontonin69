@@ -90,7 +90,12 @@ const MovieDetailPage = () => {
   const purchaseMutation = useMutation({
     mutationFn: async () => {
       if (!user || !movie || !movie.price || movie.price <= 0) {
-        throw new Error("Film tidak dapat dibeli atau harga tidak valid.");
+        // Allow purchase if price is 0, but log it as a free PPV transaction
+        if (movie.price === 0) {
+          // Proceed with transaction logging for free PPV
+        } else {
+          throw new Error("Film tidak dapat dibeli atau harga tidak valid.");
+        }
       }
 
       // Simulasi proses pembayaran yang sukses
@@ -99,7 +104,7 @@ const MovieDetailPage = () => {
         movie_id: movie.id,
         description: `Pembelian film: ${movie.title}`,
         payment_method: "Simulasi PPV",
-        amount: movie.price,
+        amount: movie.price || 0,
         status: "successful", // Langsung sukses untuk simulasi
       };
 
@@ -244,11 +249,13 @@ const MovieDetailPage = () => {
 
     // If premium and not subscribed/purchased
     if (isPremium && !canWatch) {
+        const priceText = movie.price && movie.price > 0 ? ` (${formatPrice(movie.price)})` : '';
+        
         return (
             <div className="flex flex-col sm:flex-row gap-4">
                 <Button size="lg" className="flex items-center gap-2" onClick={() => purchaseMutation.mutate()} disabled={purchaseMutation.isPending}>
                     <DollarSign className="h-6 w-6" />
-                    <span>{purchaseMutation.isPending ? "Memproses Pembelian..." : `Beli Film Ini (${formatPrice(movie.price)})`}</span>
+                    <span>{purchaseMutation.isPending ? "Memproses Pembelian..." : `Beli Film Ini${priceText}`}</span>
                 </Button>
                 <Button size="lg" variant="secondary" className="flex items-center gap-2" asChild>
                     <Link to="/subscribe">
