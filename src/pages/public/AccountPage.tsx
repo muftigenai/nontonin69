@@ -12,13 +12,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Transaction } from "@/types";
 import { useState } from "react";
 import EditProfileDialog from "@/components/public/EditProfileDialog";
-import { useNavigate } from "react-router-dom";
+import ChangePasswordDialog from "@/components/public/ChangePasswordDialog"; // Import komponen baru
+import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
 const AccountPage = () => {
   const { user } = useAuth();
   const { profile, isLoading: isLoadingProfile } = useUserProfile();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false); // State baru
   const navigate = useNavigate();
 
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
@@ -95,6 +97,9 @@ const AccountPage = () => {
                   <p className="text-muted-foreground">{user?.email}</p>
                 </div>
               )}
+              <Button variant="secondary" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
+                Ganti Kata Sandi
+              </Button>
               <Separator />
               <div>
                 <h3 className="font-semibold">Status Langganan</h3>
@@ -118,8 +123,10 @@ const AccountPage = () => {
                   </>
                 )}
               </div>
-              <Button className="w-full" disabled={profile?.subscription_status === 'premium'}>
-                Perpanjang Langganan
+              <Button className="w-full" asChild>
+                <Link to="/subscribe">
+                  {profile?.subscription_status === 'premium' ? 'Kelola Langganan' : 'Perpanjang Langganan'}
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -181,6 +188,12 @@ const AccountPage = () => {
           profile={profile}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
+        />
+      )}
+      {isPasswordDialogOpen && (
+        <ChangePasswordDialog
+          open={isPasswordDialogOpen}
+          onOpenChange={setIsPasswordDialogOpen}
         />
       )}
     </>
