@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Subtitles, Download } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Subtitles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [isSubtitleEnabled, setIsSubtitleEnabled] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false); // State baru untuk melacak status fullscreen
 
   // --- Video Controls Logic ---
 
@@ -101,18 +102,31 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     };
   }, [isPlaying, user, saveProgress]);
 
-  // 3. Keyboard Controls (Spacebar for Play/Pause)
+  const toggleFullscreen = useCallback(() => {
+    if (containerRef.current) {
+      if (!document.fullscreenElement) {
+        containerRef.current.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+  }, []);
+
+  // 3. Keyboard Controls (Spacebar for Play/Pause, 'F' for Fullscreen)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Check if the key pressed is the spacebar and no input field is focused
-      if (event.code === 'Space' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        // Prevent default action (scrolling)
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        
-        // Only toggle play if the video player container is visible/in focus area
-        if (containerRef.current && containerRef.current.contains(document.activeElement) || containerRef.current) {
-            togglePlay();
-        }
+        toggleFullscreen();
+      } else if (event.code === 'Space') {
+        event.preventDefault();
+        togglePlay();
       }
     };
 
@@ -120,7 +134,22 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [togglePlay]);
+  }, [togglePlay, toggleFullscreen]);
+
+  // 4. Listen for fullscreen changes to update state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // For Safari
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
 
   const handleTimeUpdate = () => {
@@ -162,16 +191,6 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
         // Restore volume if it was 0 before muting
         videoRef.current.volume = 0.5;
         setVolume(0.5);
-      }
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (containerRef.current) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        containerRef.current.requestFullscreen();
       }
     }
   };
@@ -260,16 +279,18 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
           </div>
         )}
 
-        {/* Progress Bar */}
-        <div className="px-4 pb-2">
-          <Slider
-            value={[currentTime]}
-            max={duration}
-            step={1}
-            onValueChange={handleProgressChange}
-            className="cursor-pointer"
-          />
-        </div>
+        {/* Progress Bar (Hidden when fullscreen) */}
+        {!isFullscreen && (
+          <div className="px-4 pb-2">
+            <Slider
+              value={[currentTime]}
+              max={duration}
+              step={1}
+              onValueChange={handleProgressChange}
+              className="cursor-pointer"
+            />
+          </div>
+        )}
 
         {/* Bottom Control Bar */}
         <div className="flex items-center justify-between p-4 pt-0">
