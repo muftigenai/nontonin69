@@ -181,7 +181,7 @@ const Settings = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField control={generalForm.control} name="appName" render={({ field }) => (<FormItem><Label>Nama Aplikasi</Label><FormControl><Input {...field} disabled={isLoadingSettings} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={generalForm.control} name="logo_file" render={({ field: { onChange, ...fieldProps } }) => (
+                  <FormField control={generalForm.control} name="logo_file" render={({ field }) => (
                     <FormItem>
                       <Label>Logo Aplikasi</Label>
                       <div className="flex items-center gap-4">
@@ -189,7 +189,20 @@ const Settings = () => {
                           {logoPreview ? <img src={logoPreview} alt="Logo Preview" className="h-full w-full object-contain p-1" /> : <Image className="h-8 w-8 text-muted-foreground" />}
                         </div>
                         <div className="flex-1">
-                          <FormControl><Input type="file" accept="image/*" onChange={(e) => { onChange(e.target.files); handleFileChange(e, setLogoPreview, generalForm.getValues("current_logo_url")); }} {...fieldProps} disabled={isLoadingSettings} /></FormControl>
+                          <FormControl>
+                            <Input 
+                              type="file" 
+                              accept="image/*" 
+                              ref={field.ref}
+                              name={field.name}
+                              onBlur={field.onBlur}
+                              onChange={(e) => { 
+                                field.onChange(e.target.files); 
+                                handleFileChange(e, setLogoPreview, generalForm.getValues("current_logo_url")); 
+                              }} 
+                              disabled={isLoadingSettings} 
+                            />
+                          </FormControl>
                           <p className="text-sm text-muted-foreground mt-1">Unggah file gambar baru untuk logo.</p>
                         </div>
                       </div>
@@ -226,7 +239,7 @@ const Settings = () => {
                   <CardDescription>Unggah gambar QRIS yang akan ditampilkan kepada pengguna saat melakukan pembayaran.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <FormField control={paymentForm.control} name="qris_file" render={({ field: { onChange, ...fieldProps } }) => (
+                  <FormField control={paymentForm.control} name="qris_file" render={({ field }) => (
                     <FormItem>
                       <Label>Gambar QRIS</Label>
                       <div className="flex items-center gap-4">
@@ -234,7 +247,20 @@ const Settings = () => {
                           {qrisPreview ? <img src={qrisPreview} alt="QRIS Preview" className="h-full w-full object-contain p-1" /> : <Image className="h-12 w-12 text-muted-foreground" />}
                         </div>
                         <div className="flex-1">
-                          <FormControl><Input type="file" accept="image/*" onChange={(e) => { onChange(e.target.files); handleFileChange(e, setQrisPreview, paymentForm.getValues("current_qris_url")); }} {...fieldProps} disabled={isLoadingSettings} /></FormControl>
+                          <FormControl>
+                            <Input 
+                              type="file" 
+                              accept="image/*" 
+                              ref={field.ref}
+                              name={field.name}
+                              onBlur={field.onBlur}
+                              onChange={(e) => { 
+                                field.onChange(e.target.files); 
+                                handleFileChange(e, setQrisPreview, paymentForm.getValues("current_qris_url")); 
+                              }} 
+                              disabled={isLoadingSettings} 
+                            />
+                          </FormControl>
                           <p className="text-sm text-muted-foreground mt-1">Unggah gambar QRIS statis Anda di sini.</p>
                         </div>
                       </div>

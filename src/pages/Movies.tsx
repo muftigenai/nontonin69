@@ -211,17 +211,19 @@ const Movies = () => {
     const isNewFileSelected = file && file.length > 0;
 
     return (
-      <FormField control={form.control} name={fieldName} render={({ field: { value, onChange, ...fieldProps } }) => (
+      <FormField control={form.control} name={fieldName} render={({ field }) => (
         <FormItem>
           <Label>{label}</Label>
           <FormControl>
             <Input
               type="file"
               accept="video/*"
+              ref={field.ref}
+              name={field.name}
+              onBlur={field.onBlur}
               onChange={(e) => {
-                onChange(e.target.files);
+                field.onChange(e.target.files);
               }}
-              {...fieldProps}
             />
           </FormControl>
           <FormMessage />
@@ -365,7 +367,7 @@ const Movies = () => {
               )} />
               
               {/* Poster Upload Field (File) */}
-              <FormField control={form.control} name="poster_file" render={({ field: { value, onChange, ...fieldProps } }) => (
+              <FormField control={form.control} name="poster_file" render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <Label>Poster Film (Unggah File)</Label>
                   <div className="flex items-center gap-4">
@@ -383,10 +385,12 @@ const Movies = () => {
                         <Input
                           type="file"
                           accept="image/*"
+                          ref={field.ref}
+                          name={field.name}
+                          onBlur={field.onBlur}
                           onChange={(e) => {
-                            onChange(e.target.files);
+                            field.onChange(e.target.files);
                           }}
-                          {...fieldProps}
                         />
                       </FormControl>
                       <p className="text-sm text-muted-foreground mt-1">
