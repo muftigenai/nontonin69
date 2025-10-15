@@ -9,6 +9,7 @@ import VideoPlayer from "@/components/public/VideoPlayer";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Link } from "react-router-dom";
+import { getYouTubeVideoId } from "@/lib/utils";
 
 const WatchMoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,8 +75,11 @@ const WatchMoviePage = () => {
     );
   }
 
+  const videoUrl = movie.video_url || movie.trailer_url;
+  const youtubeId = getYouTubeVideoId(videoUrl);
+
   // Ensure we have a video source
-  if (!movie.video_url && !movie.trailer_url) {
+  if (!videoUrl) {
     return (
       <div className="py-16 text-center">
         <h2 className="text-2xl font-semibold">Video Tidak Tersedia</h2>
@@ -87,6 +91,29 @@ const WatchMoviePage = () => {
     );
   }
 
+  const renderVideoContent = () => {
+    if (youtubeId) {
+      // Render YouTube iframe for YouTube links
+      return (
+        <div className="aspect-video w-full">
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
+            title={movie.title}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          ></iframe>
+        </div>
+      );
+    }
+    
+    // Render custom VideoPlayer for direct video URLs
+    return <VideoPlayer movie={movie} />;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -97,7 +124,7 @@ const WatchMoviePage = () => {
         <h1 className="text-2xl font-bold truncate">{movie.title}</h1>
       </div>
       
-      <VideoPlayer movie={movie} />
+      {renderVideoContent()}
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Sinopsis</h2>
