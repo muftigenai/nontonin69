@@ -24,12 +24,12 @@ const movieSchema = z.object({
   description: z.string().min(1, "Deskripsi tidak boleh kosong"),
   poster_url: z.string().url("URL poster tidak valid"),
   trailer_url: z.string().url("URL trailer tidak valid"),
-  video_url: z.string().url("URL film tidak valid").optional().or(z.literal('')),
+  video_url: z.string().optional(), // Dibuat lebih fleksibel
   release_date: z.string().min(1, "Tanggal rilis tidak boleh kosong"),
   genre: z.string().min(1, "Genre tidak boleh kosong"),
   duration: z.coerce.number().min(1, "Durasi harus lebih dari 0"),
   price: z.coerce.number().min(0, "Harga tidak boleh negatif"),
-  subtitle_url: z.string().url("URL subtitle tidak valid").optional().or(z.literal('')),
+  subtitle_url: z.string().optional(), // Dibuat lebih fleksibel
   access_type: z.enum(["free", "premium"], {
     required_error: "Anda perlu memilih tipe akses.",
   }),
