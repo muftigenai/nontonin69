@@ -9,7 +9,7 @@ import VideoPlayer from "@/components/public/VideoPlayer";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Link } from "react-router-dom";
-import { getYouTubeVideoId } from "@/lib/utils";
+import { getYouTubeVideoId, getGoogleDriveFileId } from "@/lib/utils";
 
 const WatchMoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,6 +77,7 @@ const WatchMoviePage = () => {
 
   const videoUrl = movie.video_url || movie.trailer_url;
   const youtubeId = getYouTubeVideoId(videoUrl);
+  const driveId = getGoogleDriveFileId(videoUrl);
 
   // Ensure we have a video source
   if (!videoUrl) {
@@ -92,8 +93,26 @@ const WatchMoviePage = () => {
   }
 
   const renderVideoContent = () => {
+    if (driveId) {
+      // Render Google Drive iframe
+      return (
+        <div className="aspect-video w-full">
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://drive.google.com/file/d/${driveId}/preview`}
+            title={movie.title}
+            frameBorder="0"
+            allow="autoplay"
+            allowFullScreen
+            className="rounded-lg"
+          ></iframe>
+        </div>
+      );
+    }
+    
     if (youtubeId) {
-      // Render YouTube iframe for YouTube links
+      // Render YouTube iframe
       return (
         <div className="aspect-video w-full">
           <iframe
