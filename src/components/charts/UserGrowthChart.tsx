@@ -2,17 +2,80 @@
 
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useMemo } from "react";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const data = [
-  { month: "Jan", users: 100 },
-  { month: "Feb", users: 120 },
-  { month: "Mar", users: 150 },
-  { month: "Apr", users: 180 },
-  { month: "May", users: 220 },
-  { month: "Jun", users: 250 },
-];
+type MonthlyUsers = {
+  month: string;
+  users: number;
+};
+
+const useMonthlyUserGrowth = () => {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["monthlyUserGrowth"],
+    queryFn: async () => {
+      // Ambil semua pengguna yang terdaftar dalam 6 bulan terakhir
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      // Menggunakan tabel user_details yang memiliki created_at
+      const { data, error } = await supabase
+        .from("user_details")
+        .select("created_at")
+        .gte("created_at", sixMonthsAgo.toISOString());
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+
+  const aggregatedData = useMemo(() => {
+    if (!data) return [];
+
+    const monthlyMap = new Map<string, number>();
+
+    data.forEach(user => {
+      const monthKey = format(new Date(user.created_at), "MMM yyyy", { locale: id });
+      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + 1);
+    });
+
+    // Urutkan berdasarkan tanggal
+    const sortedKeys = Array.from(monthlyMap.keys()).sort((a, b) => {
+      const dateA = new Date(a.replace(/(\w{3}) (\d{4})/, "1 $1 $2"));
+      const dateB = new Date(b.replace(/(\w{3}) (\d{4})/, "1 $1 $2"));
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    // Hitung pertumbuhan kumulatif
+    let cumulativeUsers = 0;
+    return sortedKeys.map(key => {
+      cumulativeUsers += monthlyMap.get(key) || 0;
+      return {
+        month: format(new Date(key.replace(/(\w{3}) (\d{4})/, "1 $1 $2")), "MMM", { locale: id }),
+        users: cumulativeUsers,
+      };
+    });
+  }, [data]);
+
+  return { data: aggregatedData, isLoading, error };
+};
 
 const UserGrowthChart = () => {
+  const { data, isLoading } = useMonthlyUserGrowth();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>Pertumbuhan Pengguna</CardTitle></CardHeader>
+        <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
