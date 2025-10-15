@@ -93,6 +93,9 @@ const WatchMoviePage = () => {
   }
 
   const renderVideoContent = () => {
+    // Atribut sandbox yang membatasi navigasi dan pop-up, tetapi mengizinkan skrip dan fullscreen
+    const sandboxAttributes = "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-fullscreen";
+
     if (driveId) {
       // Render Google Drive iframe
       return (
@@ -103,8 +106,9 @@ const WatchMoviePage = () => {
             src={`https://drive.google.com/file/d/${driveId}/preview`}
             title={movie.title}
             frameBorder="0"
-            allow="autoplay"
+            allow="autoplay; fullscreen"
             allowFullScreen
+            sandbox={sandboxAttributes}
             className="rounded-lg"
           ></iframe>
         </div>
@@ -121,12 +125,14 @@ const WatchMoviePage = () => {
             src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
             title={movie.title}
             frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
+            sandbox={sandboxAttributes}
             className="rounded-lg"
           ></iframe>
         </div>
       );
+    );
     }
     
     // Render custom VideoPlayer for direct video URLs
