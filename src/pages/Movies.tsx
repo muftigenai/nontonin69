@@ -19,13 +19,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { MoreHorizontal } from "lucide-react";
 import { Movie } from "@/types";
 
-// Skema baru: poster_file (upload), trailer_url & video_url (string URL)
+// Skema baru: poster_file, trailer_file, video_file (semuanya FileList)
 const movieSchema = z.object({
   title: z.string().min(1, "Judul tidak boleh kosong"),
   description: z.string().min(1, "Deskripsi tidak boleh kosong"),
   poster_file: z.instanceof(FileList).optional(),
-  trailer_url: z.string().url("URL trailer tidak valid").optional().or(z.literal("")),
-  video_url: z.string().url("URL video tidak valid").optional().or(z.literal("")),
+  trailer_file: z.instanceof(FileList).optional(),
+  video_file: z.instanceof(FileList).optional(),
   release_date: z.string().min(1, "Tanggal rilis tidak boleh kosong"),
   genre: z.string().min(1, "Genre tidak boleh kosong"),
   duration: z.coerce.number().min(1, "Durasi harus lebih dari 0"),
@@ -38,6 +38,8 @@ const movieSchema = z.object({
 
 type MovieFormValues = z.infer<typeof movieSchema> & {
   current_poster_url?: string | null;
+  current_trailer_url?: string | null;
+  current_video_url?: string | null;
 };
 
 const Movies = () => {
@@ -53,8 +55,10 @@ const Movies = () => {
       description: "",
       poster_file: undefined,
       current_poster_url: null,
-      trailer_url: "",
-      video_url: "",
+      trailer_file: undefined,
+      current_trailer_url: null,
+      video_file: undefined,
+      current_video_url: null,
       release_date: "",
       genre: "",
       duration: 0,
@@ -80,20 +84,20 @@ const Movies = () => {
     );
   }, [movies, searchTerm]);
 
-  const uploadPoster = async (fileList: FileList | undefined, currentUrl: string | null) => {
+  const uploadFile = async (fileList: FileList | undefined, currentUrl: string | null, folder: 'posters' | 'videos') => {
     if (fileList && fileList.length > 0) {
       const file = fileList[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-      const filePath = `posters/${fileName}`;
+      const filePath = `${folder}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('posters')
+        .from('movies_content')
         .upload(filePath, file);
 
-      if (uploadError) throw new Error(`Gagal mengunggah poster: ${uploadError.message}`);
+      if (uploadError) throw new Error(`Gagal mengunggah file ${folder}: ${uploadError.message}`);
 
-      const { data: urlData } = supabase.storage.from('posters').getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from('movies_content').getPublicUrl(filePath);
       return urlData.publicUrl;
     }
     return currentUrl;
@@ -101,17 +105,28 @@ const Movies = () => {
 
   const mutation = useMutation({
     mutationFn: async (values: MovieFormValues) => {
-      const { poster_file, current_poster_url, ...rest } = values;
+      const { poster_file, current_poster_url, trailer_file, current_trailer_url, video_file, current_video_url, ...rest } = values;
 
-      // 1. Upload Poster (File)
-      const posterUrlToSave = await uploadPoster(poster_file, current_poster_url);
+      // 1. Upload Poster
+      const posterUrlToSave = await uploadFile(poster_file, current_poster_url, 'posters');
       if (!editingMovie && !posterUrlToSave) {
         throw new Error("Poster film harus diunggah.");
+      }
+
+      // 2. Upload Trailer
+      const trailerUrlToSave = await uploadFile(trailer_file, current_trailer_url, 'videos');
+      
+      // 3. Upload Video Utama
+      const videoUrlToSave = await uploadFile(video_file, current_video_url, 'videos');
+      if (!editingMovie && !videoUrlToSave) {
+        throw new Error("Video film utama harus diunggah.");
       }
 
       const movieData = { 
         ...rest, 
         poster_url: posterUrlToSave,
+        trailer_url: trailerUrlToSave,
+        video_url: videoUrlToSave,
       };
 
       const { error } = editingMovie
@@ -149,7 +164,8 @@ const Movies = () => {
   const handleAdd = () => {
     setEditingMovie(null);
     form.reset({
-      title: "", description: "", poster_file: undefined, current_poster_url: null, trailer_url: "", video_url: "",
+      title: "", description: "", poster_file: undefined, current_poster_url: null, 
+      trailer_file: undefined, current_trailer_url: null, video_file: undefined, current_video_url: null,
       release_date: "", genre: "", duration: 0, price: 0, subtitle_url: "", access_type: "free"
     });
     setIsDialogOpen(true);
@@ -162,13 +178,15 @@ const Movies = () => {
       duration: movie.duration || 0,
       price: movie.price || 0,
       subtitle_url: movie.subtitle_url || "",
-      trailer_url: movie.trailer_url || "",
-      video_url: movie.video_url || "",
       access_type: movie.access_type || "free",
       // Set current URLs for preservation if no new file is uploaded
       current_poster_url: movie.poster_url,
-      // Reset file input
+      current_trailer_url: movie.trailer_url,
+      current_video_url: movie.video_url,
+      // Reset file inputs
       poster_file: undefined,
+      trailer_file: undefined,
+      video_file: undefined,
     });
     setIsDialogOpen(true);
   };
@@ -186,6 +204,41 @@ const Movies = () => {
   const currentPosterUrl = form.watch("current_poster_url");
   const posterFile = form.watch("poster_file");
   const previewUrl = posterFile && posterFile.length > 0 ? URL.createObjectURL(posterFile[0]) : currentPosterUrl;
+
+  const renderFileField = (fieldName: 'trailer_file' | 'video_file', currentUrlField: 'current_trailer_url' | 'current_video_url', label: string) => {
+    const currentUrl = form.watch(currentUrlField);
+    const file = form.watch(fieldName);
+    const isNewFileSelected = file && file.length > 0;
+
+    return (
+      <FormField control={form.control} name={fieldName} render={({ field: { value, onChange, ...fieldProps } }) => (
+        <FormItem>
+          <Label>{label}</Label>
+          <FormControl>
+            <Input
+              type="file"
+              accept="video/*"
+              onChange={(e) => {
+                onChange(e.target.files);
+              }}
+              {...fieldProps}
+            />
+          </FormControl>
+          <FormMessage />
+          {currentUrl && !isNewFileSelected && (
+            <p className="text-sm text-muted-foreground mt-1">
+              File saat ini: <a href={currentUrl} target="_blank" rel="noopener noreferrer" className="underline truncate block">{currentUrl}</a>
+            </p>
+          )}
+          {isNewFileSelected && (
+            <p className="text-sm text-yellow-500 mt-1">
+              File baru akan diunggah: {file[0].name}
+            </p>
+          )}
+        </FormItem>
+      )} />
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -346,22 +399,10 @@ const Movies = () => {
               )} />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Trailer URL Field (Reverted to URL) */}
-                <FormField control={form.control} name="trailer_url" render={({ field }) => (
-                  <FormItem>
-                    <Label>URL Trailer (Contoh: YouTube)</Label>
-                    <FormControl><Input {...field} placeholder="https://youtube.com/watch?v=..." /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                {/* Video URL Field (Reverted to URL) */}
-                <FormField control={form.control} name="video_url" render={({ field }) => (
-                  <FormItem>
-                    <Label>URL Film Utama (Contoh: CDN)</Label>
-                    <FormControl><Input {...field} placeholder="https://cdn.example.com/movie.mp4" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {/* Trailer Upload Field */}
+                {renderFileField('trailer_file', 'current_trailer_url', 'File Trailer (Opsional)')}
+                {/* Video Utama Upload Field */}
+                {renderFileField('video_file', 'current_video_url', 'File Video Utama')}
               </div>
               
               <FormField control={form.control} name="subtitle_url" render={({ field }) => (

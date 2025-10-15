@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Movie } from "@/types";
@@ -8,8 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import VideoPlayer from "@/components/public/VideoPlayer";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { Link } from "react-router-dom";
-import { getYouTubeVideoId, getGoogleDriveFileId } from "@/lib/utils";
+// Hapus import getYouTubeVideoId, getGoogleDriveFileId karena kita memprioritaskan VideoPlayer kustom
 
 const WatchMoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -75,9 +74,7 @@ const WatchMoviePage = () => {
     );
   }
 
-  const videoUrl = movie.video_url || movie.trailer_url;
-  const youtubeId = getYouTubeVideoId(videoUrl);
-  const driveId = getGoogleDriveFileId(videoUrl);
+  const videoUrl = movie.video_url; // Hanya gunakan video_url utama
 
   // Ensure we have a video source
   if (!videoUrl) {
@@ -92,52 +89,7 @@ const WatchMoviePage = () => {
     );
   }
 
-  const renderVideoContent = () => {
-    // Atribut sandbox yang membatasi navigasi dan pop-up, tetapi mengizinkan skrip dan fullscreen
-    const sandboxAttributes = "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-fullscreen";
-
-    if (driveId) {
-      // Render Google Drive iframe
-      return (
-        <div className="aspect-video w-full">
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://drive.google.com/file/d/${driveId}/preview`}
-            title={movie.title}
-            frameBorder="0"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            sandbox={sandboxAttributes}
-            className="rounded-lg"
-          ></iframe>
-        </div>
-      );
-    }
-    
-    if (youtubeId) {
-      // Render YouTube iframe
-      return (
-        <div className="aspect-video w-full">
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
-            title={movie.title}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            sandbox={sandboxAttributes}
-            className="rounded-lg"
-          ></iframe>
-        </div>
-      );
-    }
-    
-    // Render custom VideoPlayer for direct video URLs
-    return <VideoPlayer movie={movie} />;
-  };
-
+  // Render custom VideoPlayer for direct video URLs (Supabase Storage)
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -148,7 +100,7 @@ const WatchMoviePage = () => {
         <h1 className="text-2xl font-bold truncate">{movie.title}</h1>
       </div>
       
-      {renderVideoContent()}
+      <VideoPlayer movie={movie} />
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Sinopsis</h2>
