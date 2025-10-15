@@ -10,9 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/AuthProvider";
 import { Link, NavLink } from "react-router-dom";
-import { Bell, Clapperboard, Home, LineChart, Menu, Receipt, Settings, Users } from "lucide-react";
+import { Bell, Clapperboard, Home, LineChart, Menu, Receipt, Settings, Users, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { Separator } from "./ui/separator";
 
 const navItems = [
   { to: "/admin", icon: Home, label: "Dashboard" },
@@ -45,7 +46,7 @@ const Header = () => {
               <span className="sr-only">Buka menu navigasi</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="pt-12">
+          <SheetContent side="left" className="flex flex-col pt-12">
             <nav className="grid gap-4">
               <Link to="/admin" className="group mb-4 flex items-center gap-2 text-lg font-semibold">
                 <Clapperboard className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
@@ -68,6 +69,18 @@ const Header = () => {
                 </NavLink>
               ))}
             </nav>
+            <div className="mt-auto">
+              <Separator className="my-4" />
+              <Link
+                to="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <ExternalLink className="h-5 w-5" />
+                Lihat Situs Publik
+              </Link>
+            </div>
           </SheetContent>
         </Sheet>
       </div>
