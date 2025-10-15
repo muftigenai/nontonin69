@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, UserX, UserCheck, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Search, UserX, UserCheck, PlusCircle, Edit } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { UserDetails } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,21 +24,27 @@ const userFormSchema = z.object({
   role: z.enum(["user", "admin"], { required_error: "Peran harus dipilih" }),
 });
 
+const editRoleSchema = z.object({
+  role: z.enum(["user", "admin"], { required_error: "Peran harus dipilih" }),
+});
+
 type UserFormValues = z.infer<typeof userFormSchema>;
+type EditRoleFormValues = z.infer<typeof editRoleSchema>;
 
 const Users = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserDetails | null>(null);
 
-  const form = useForm<UserFormValues>({
+  const addUserForm = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
-    defaultValues: {
-      full_name: "",
-      email: "",
-      password: "",
-      role: "user",
-    },
+    defaultValues: { full_name: "", email: "", password: "", role: "user" },
+  });
+
+  const editRoleForm = useForm<EditRoleFormValues>({
+    resolver: zodResolver(editRoleSchema),
   });
 
   const { data: users, isLoading } = useQuery({
@@ -56,25 +62,18 @@ const Users = () => {
 
   const addUserMutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: values,
-      });
-
+      const { data, error } = await supabase.functions.invoke('create-user', { body: values });
       if (error) throw new Error(error.message);
-      // The edge function might return a structured error
       if (data.error) throw new Error(data.error);
-
       return data;
     },
     onSuccess: () => {
       showSuccess("Pengguna baru berhasil ditambahkan.");
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setIsAddUserDialogOpen(false);
-      form.reset();
+      addUserForm.reset();
     },
-    onError: (error: Error) => {
-      showError(`Gagal menambahkan pengguna: ${error.message}`);
-    },
+    onError: (error: Error) => showError(`Gagal menambahkan pengguna: ${error.message}`),
   });
 
   const updateUserStatusMutation = useMutation({
@@ -86,9 +85,20 @@ const Users = () => {
       showSuccess("Status pengguna berhasil diperbarui.");
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error) => {
-      showError(`Gagal memperbarui status: ${error.message}`);
+    onError: (error) => showError(`Gagal memperbarui status: ${error.message}`),
+  });
+
+  const updateUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
+      if (error) throw new Error(error.message);
     },
+    onSuccess: () => {
+      showSuccess("Peran pengguna berhasil diperbarui.");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setIsEditRoleDialogOpen(false);
+    },
+    onError: (error) => showError(`Gagal memperbarui peran: ${error.message}`),
   });
 
   const handleToggleBlock = (user: UserDetails) => {
@@ -96,17 +106,22 @@ const Users = () => {
     updateUserStatusMutation.mutate({ userId: user.id, status: newStatus });
   };
 
-  const getInitials = (name?: string | null) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+  const handleEditRole = (user: UserDetails) => {
+    setEditingUser(user);
+    editRoleForm.setValue("role", user.role === "admin" ? "admin" : "user");
+    setIsEditRoleDialogOpen(true);
   };
 
-  const onAddUserSubmit = (values: UserFormValues) => {
-    addUserMutation.mutate(values);
+  const getInitials = (name?: string | null) => {
+    if (!name) return "U";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase();
+  };
+
+  const onAddUserSubmit = (values: UserFormValues) => addUserMutation.mutate(values);
+  const onEditRoleSubmit = (values: EditRoleFormValues) => {
+    if (editingUser) {
+      updateUserRoleMutation.mutate({ userId: editingUser.id, role: values.role });
+    }
   };
 
   return (
@@ -148,11 +163,7 @@ const Users = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  Memuat data pengguna...
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center">Memuat data pengguna...</TableCell></TableRow>
             ) : (
               users?.map((user) => (
                 <TableRow key={user.id}>
@@ -168,40 +179,17 @@ const Users = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={user.role === "admin" ? "default" : "outline"}>{user.role}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.subscription_status === "premium" ? "default" : "secondary"}>
-                      {user.subscription_status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.status === "active" ? "outline" : "destructive"}>
-                      {user.status === "active" ? "Aktif" : "Diblokir"}
-                    </Badge>
-                  </TableCell>
+                  <TableCell><Badge variant={user.role === "admin" ? "default" : "outline"}>{user.role}</Badge></TableCell>
+                  <TableCell><Badge variant={user.subscription_status === "premium" ? "default" : "secondary"}>{user.subscription_status}</Badge></TableCell>
+                  <TableCell><Badge variant={user.status === "active" ? "outline" : "destructive"}>{user.status === "active" ? "Aktif" : "Diblokir"}</Badge></TableCell>
                   <TableCell>{new Date(user.created_at).toLocaleDateString("id-ID")}</TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Buka menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Buka menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditRole(user)}><Edit className="mr-2 h-4 w-4" /> Edit Peran</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggleBlock(user)}>
-                          {user.status === "active" ? (
-                            <>
-                              <UserX className="mr-2 h-4 w-4" /> Blokir
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="mr-2 h-4 w-4" /> Aktifkan
-                            </>
-                          )}
+                          {user.status === "active" ? (<><UserX className="mr-2 h-4 w-4" /> Blokir</>) : (<><UserCheck className="mr-2 h-4 w-4" /> Aktifkan</>)}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -213,83 +201,35 @@ const Users = () => {
         </Table>
       </div>
 
+      {/* Add User Dialog */}
       <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Tambah Pengguna Baru</DialogTitle>
-            <DialogDescription>
-              Isi detail di bawah ini untuk membuat akun baru.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onAddUserSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nama Lengkap</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Contoh: John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="contoh@email.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Peran</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih peran pengguna" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <DialogHeader><DialogTitle>Tambah Pengguna Baru</DialogTitle><DialogDescription>Isi detail di bawah ini untuk membuat akun baru.</DialogDescription></DialogHeader>
+          <Form {...addUserForm}>
+            <form onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-4">
+              <FormField control={addUserForm.control} name="full_name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Contoh: John Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={addUserForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="contoh@email.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={addUserForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={addUserForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih peran pengguna" /></SelectTrigger></FormControl><SelectContent><SelectItem value="user">User</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>
-                  Batal
-                </Button>
-                <Button type="submit" disabled={addUserMutation.isPending}>
-                  {addUserMutation.isPending ? "Menambahkan..." : "Tambah Pengguna"}
-                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Batal</Button>
+                <Button type="submit" disabled={addUserMutation.isPending}>{addUserMutation.isPending ? "Menambahkan..." : "Tambah Pengguna"}</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Role Dialog */}
+      <Dialog open={isEditRoleDialogOpen} onOpenChange={setIsEditRoleDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Edit Peran Pengguna</DialogTitle><DialogDescription>Ubah peran untuk {editingUser?.full_name || editingUser?.email}.</DialogDescription></DialogHeader>
+          <Form {...editRoleForm}>
+            <form onSubmit={editRoleForm.handleSubmit(onEditRoleSubmit)} className="space-y-4">
+              <FormField control={editRoleForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih peran baru" /></SelectTrigger></FormControl><SelectContent><SelectItem value="user">User</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditRoleDialogOpen(false)}>Batal</Button>
+                <Button type="submit" disabled={updateUserRoleMutation.isPending}>{updateUserRoleMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}</Button>
               </DialogFooter>
             </form>
           </Form>
