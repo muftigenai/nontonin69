@@ -243,7 +243,8 @@ const MovieDetailPage = () => {
 
   // Determine access status
   const isPremium = movie.access_type === 'premium';
-  const isSubscribed = profile?.subscription_status === 'premium';
+  // FIX: Use isPremiumActive from useUserProfile
+  const isSubscribed = profile?.isPremiumActive; 
   const isFree = movie.access_type === 'free';
   const canWatch = isFree || isSubscribed || hasPurchased;
 
