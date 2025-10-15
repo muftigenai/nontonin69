@@ -1,16 +1,17 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Movie } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Calendar, Tag, Star, PlayCircle, Ticket } from "lucide-react";
+import { Clock, Calendar, Tag, Star, PlayCircle, Ticket, ArrowLeft } from "lucide-react";
 import MovieCard from "@/components/public/MovieCard";
 import { Separator } from "@/components/ui/separator";
 
 const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const { data: movie, isLoading, error } = useQuery({
     queryKey: ["movie", id],
@@ -103,7 +104,14 @@ const MovieDetailPage = () => {
   }
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
+      <div>
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Kembali</span>
+        </Button>
+      </div>
+
       <section className="grid grid-cols-1 items-start gap-8 md:grid-cols-3 lg:grid-cols-[1fr,2fr]">
         <img
           src={movie.poster_url || "https://placehold.co/400x600?text=No+Image"}
