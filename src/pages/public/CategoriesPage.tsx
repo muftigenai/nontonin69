@@ -13,8 +13,11 @@ import {
   Ghost,
   Gem,
   Star,
+  ArrowLeft,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const genres = [
   { name: "Aksi", icon: Swords, key: "aksi" },
@@ -25,6 +28,7 @@ const genres = [
 
 const CategoriesPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: movies, isLoading: isLoadingMovies, error } = useQuery({
     queryKey: ["public_movies"],
@@ -82,9 +86,15 @@ const CategoriesPage = () => {
 
   return (
     <div className="space-y-12">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight">Jelajahi Kategori Film</h1>
-        <p className="text-muted-foreground mt-2">Temukan film berdasarkan kategori yang Anda sukai.</p>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="sr-only">Kembali</span>
+        </Button>
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight">Jelajahi Kategori Film</h1>
+          <p className="text-muted-foreground mt-2">Temukan film berdasarkan kategori yang Anda sukai.</p>
+        </div>
       </div>
 
       {error && <p className="text-red-500">Gagal memuat film: {error.message}</p>}
