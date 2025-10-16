@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, UserX, UserCheck, PlusCircle, Edit } from "lucide-react";
+import { MoreHorizontal, Search, UserX, UserCheck, PlusCircle, Edit, KeyRound } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { UserDetails } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import ChangeUserPasswordDialog from "@/components/admin/ChangeUserPasswordDialog";
 
 const userFormSchema = z.object({
   full_name: z.string().min(1, "Nama lengkap tidak boleh kosong"),
@@ -36,6 +37,7 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false); // New state
   const [editingUser, setEditingUser] = useState<UserDetails | null>(null);
 
   const addUserForm = useForm<UserFormValues>({
@@ -110,6 +112,11 @@ const Users = () => {
     setEditingUser(user);
     editRoleForm.setValue("role", user.role === "admin" ? "admin" : "user");
     setIsEditRoleDialogOpen(true);
+  };
+  
+  const handleChangePassword = (user: UserDetails) => {
+    setEditingUser(user);
+    setIsChangePasswordDialogOpen(true);
   };
 
   const getInitials = (name?: string | null) => {
@@ -188,6 +195,7 @@ const Users = () => {
                       <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Buka menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEditRole(user)}><Edit className="mr-2 h-4 w-4" /> Edit Peran</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleChangePassword(user)}><KeyRound className="mr-2 h-4 w-4" /> Ganti Password</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggleBlock(user)}>
                           {user.status === "active" ? (<><UserX className="mr-2 h-4 w-4" /> Blokir</>) : (<><UserCheck className="mr-2 h-4 w-4" /> Aktifkan</>)}
                         </DropdownMenuItem>
@@ -235,6 +243,16 @@ const Users = () => {
           </Form>
         </DialogContent>
       </Dialog>
+      
+      {/* Change Password Dialog */}
+      {editingUser && (
+        <ChangeUserPasswordDialog
+          open={isChangePasswordDialogOpen}
+          onOpenChange={setIsChangePasswordDialogOpen}
+          userId={editingUser.id}
+          userName={editingUser.full_name || editingUser.email || "Pengguna"}
+        />
+      )}
     </div>
   );
 };
