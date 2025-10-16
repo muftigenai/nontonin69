@@ -13,8 +13,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 0 84.2% 60.2%;
-    --primary-foreground: 210 40% 98%;
+    /* New Primary Color: #C4A24C (HSL: 42 48% 53%) */
+    --primary: 42 48% 53%;
+    --primary-foreground: 210 40% 98%; /* White/Near White */
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -45,7 +46,8 @@
     --popover: 240 10% 3.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 0 72.2% 50.6%;
+    /* New Primary Color (Darker shade for contrast): HSL 42 48% 65% */
+    --primary: 42 48% 65%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -62,7 +64,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 0 72.2% 50.6%;
+    --ring: 42 48% 65%;
   }
 }
 
