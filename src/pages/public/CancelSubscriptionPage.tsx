@@ -115,7 +115,7 @@ const CancelSubscriptionPage = () => {
               </div>
             </>
           ) : (
-            <Alert variant="secondary">
+            <Alert variant="default">
               <ShieldOff className="h-4 w-4" />
               <AlertTitle>Status: Tidak Aktif</AlertTitle>
               <AlertDescription>
