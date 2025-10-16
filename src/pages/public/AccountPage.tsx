@@ -134,7 +134,7 @@ const AccountPage = () => {
                 )}
               </div>
               <Button className="w-full" asChild>
-                <Link to="/subscribe">
+                <Link to={profile?.isPremiumActive ? "/account/cancel-subscription" : "/subscribe"}>
                   {profile?.isPremiumActive ? 'Kelola Langganan' : 'Perpanjang Langganan'}
                 </Link>
               </Button>
