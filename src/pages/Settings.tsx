@@ -112,9 +112,11 @@ const Settings = () => {
 
   const onGeneralSubmit = async (values: GeneralSettingsFormValues) => {
     try {
-      const logoUrl = await uploadFile(values.logo_file, 'logo/app_logo', 'app_assets');
+      const logoUrlBase = await uploadFile(values.logo_file, 'logo/app_logo', 'app_assets');
       await updateSettingMutation.mutateAsync({ key: "app_name", value: values.appName });
-      if (logoUrl) {
+      if (logoUrlBase) {
+        // Append cache buster to force refresh
+        const logoUrl = `${logoUrlBase}?v=${Date.now()}`;
         await updateSettingMutation.mutateAsync({ key: "app_logo_url", value: logoUrl });
       }
       showSuccess("Pengaturan umum berhasil diperbarui.");
@@ -138,8 +140,10 @@ const Settings = () => {
 
   const onPaymentSubmit = async (values: PaymentSettingsFormValues) => {
     try {
-      const qrisUrl = await uploadFile(values.qris_file, 'qris/payment_qris', 'app_assets');
-      if (qrisUrl) {
+      const qrisUrlBase = await uploadFile(values.qris_file, 'qris/payment_qris', 'app_assets');
+      if (qrisUrlBase) {
+        // Append cache buster to force refresh
+        const qrisUrl = `${qrisUrlBase}?v=${Date.now()}`;
         await updateSettingMutation.mutateAsync({ key: "qris_image_url", value: qrisUrl });
         showSuccess("Gambar QRIS berhasil diperbarui.");
       } else {
