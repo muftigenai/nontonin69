@@ -8,7 +8,7 @@ const AppIcon: React.FC<AppIconProps> = ({ className = 'h-7 w-7' }) => {
   return (
     <img 
       src="/app-icon.png" 
-      alt="Nontonin Logo" 
+      alt="CineLoka Logo" 
       className={className} 
     />
   );

@@ -57,7 +57,7 @@ const PublicNavbar = () => {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
             <AppIcon className="h-7 w-7" />
-            <span className="text-xl font-bold">Nontonin</span>
+            <span className="text-xl font-bold">CineLoka</span>
           </Link>
           <nav className="hidden items-center gap-4 md:flex">
             {publicNavItems.map((item) => (

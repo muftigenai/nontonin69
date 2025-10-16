@@ -16,7 +16,7 @@ const Login = () => {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <div className="mb-8 flex items-center gap-2">
             <AppIcon className="h-10 w-10" />
-            <h1 className="text-4xl font-bold">Nontonin</h1>
+            <h1 className="text-4xl font-bold">CineLoka</h1>
         </div>
       <div className="w-full max-w-md">
         <Auth

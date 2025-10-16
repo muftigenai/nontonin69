@@ -50,7 +50,7 @@ const Header = () => {
             <nav className="grid gap-4">
               <Link to="/admin" className="group mb-4 flex items-center gap-2 text-lg font-semibold">
                 <AppIcon className="h-8 w-8" />
-                <span className="font-bold">Nontonin</span>
+                <span className="font-bold">CineLoka</span>
               </Link>
               {navItems.map((item) => (
                 <NavLink

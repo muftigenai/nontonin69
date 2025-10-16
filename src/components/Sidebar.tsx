@@ -18,7 +18,7 @@ const Sidebar = () => {
       <div className="flex flex-1 flex-col">
         <div className="mb-8 flex items-center gap-2">
           <AppIcon className="h-8 w-8" />
-          <h1 className="text-2xl font-bold">Nontonin</h1>
+          <h1 className="text-2xl font-bold">CineLoka</h1>
         </div>
         <nav className="flex flex-col gap-2">
           {navItems.map((item) => (
