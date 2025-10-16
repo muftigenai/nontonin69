@@ -62,7 +62,16 @@ const Dashboard = () => {
         .limit(5);
       
       if (error) throw new Error(error.message);
-      return data as Transaction[];
+      if (!data) return [];
+
+      // Fix: Shape the data to match the Transaction type
+      const formattedData = data.map(item => ({
+        ...item,
+        user_details: Array.isArray(item.user_details) ? item.user_details[0] : item.user_details,
+        movies: Array.isArray(item.movies) ? item.movies[0] : item.movies,
+      }));
+
+      return formattedData as unknown as Transaction[];
     },
   });
 

@@ -36,7 +36,15 @@ const AccountPage = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw new Error(error.message);
-      return data as Transaction[];
+      if (!data) return [];
+
+      // Fix: Shape the data to match the Transaction type
+      const formattedData = data.map(item => ({
+        ...item,
+        movies: Array.isArray(item.movies) ? item.movies[0] : item.movies,
+      }));
+
+      return formattedData as unknown as Transaction[];
     },
     enabled: !!user,
   });

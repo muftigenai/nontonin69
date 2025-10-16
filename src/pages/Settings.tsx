@@ -126,9 +126,9 @@ const Settings = () => {
   const onSubscriptionSubmit = async (values: z.infer<typeof subscriptionSettingsSchema>) => {
     try {
       await Promise.all([
-        updateSettingMutation.mutateAsync({ p_key: 'monthly_price', p_value: String(values.monthlyPrice) }),
-        updateSettingMutation.mutateAsync({ p_key: 'annual_price', p_value: String(values.annualPrice) }),
-        updateSettingMutation.mutateAsync({ p_key: 'ppv_price', p_value: String(values.ppvPrice) }),
+        updateSettingMutation.mutateAsync({ key: 'monthly_price', value: String(values.monthlyPrice) }),
+        updateSettingMutation.mutateAsync({ key: 'annual_price', value: String(values.annualPrice) }),
+        updateSettingMutation.mutateAsync({ key: 'ppv_price', value: String(values.ppvPrice) }),
       ]);
       showSuccess("Harga langganan berhasil disimpan.");
     } catch (error: any) {
