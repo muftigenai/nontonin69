@@ -118,15 +118,36 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     };
   }, [isPlaying, user, saveProgress]);
 
-  // Fullscreen logic
+  // Fullscreen logic (cross-browser compatible)
   const toggleFullscreen = useCallback(() => {
-    if (containerRef.current) {
-      if (!document.fullscreenElement) {
-        containerRef.current.requestFullscreen();
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
+    const element = containerRef.current as any;
+    if (!element) return;
+
+    const isCurrentlyFullscreen = 
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement;
+
+    if (!isCurrentlyFullscreen) {
+      if (element.requestFullscreen) {
+        element.requestFullscreen();
+      } else if (element.webkitRequestFullscreen) { /* Safari */
+        element.webkitRequestFullscreen();
+      } else if (element.mozRequestFullScreen) { /* Firefox */
+        element.mozRequestFullScreen();
+      } else if (element.msRequestFullscreen) { /* IE11 */
+        element.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) { /* Safari */
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) { /* Firefox */
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) { /* IE11 */
+        (document as any).msExitFullscreen();
       }
     }
   }, []);
@@ -153,12 +174,16 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
     };
   }, [togglePlay, toggleFullscreen]);
 
-  // Listen for fullscreen changes
+  // Listen for fullscreen changes (cross-browser compatible)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const newFullscreenStatus = !!document.fullscreenElement;
+      const newFullscreenStatus = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
       setIsFullscreen(newFullscreenStatus);
-      // When exiting fullscreen, ensure controls are visible initially
       if (!newFullscreenStatus) {
         setShowControls(true);
       }
@@ -166,10 +191,14 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
   }, []);
 
@@ -279,6 +308,7 @@ const VideoPlayer = ({ movie }: VideoPlayerProps) => {
         onLoadedMetadata={handleLoadedMetadata}
         onClick={togglePlay}
         className="w-full aspect-video cursor-pointer"
+        playsInline // Required for iOS to allow custom controls and prevent auto-fullscreen
       >
         {movie.subtitle_url && (
           <track
